@@ -1,0 +1,35 @@
+      {
+        "name": "NetAlertX",
+        "slug": "netalertx",
+        "categories": [
+          4
+        ],
+        "date_created": "2026-02-17",
+        "type": "ct",
+        "updateable": true,
+        "privileged": false,
+        "interface_port": 20211,
+        "documentation": "https://docs.netalertx.com/",
+        "website": "https://github.com/netalertx/NetAlertX",
+        "logo": "https://cdn.jsdelivr.net/gh/selfhst/icons@main/webp/netalertx-light.webp",
+        "config_path": "xxxxxxxxxxxxxxxxx",
+        "description": "Centralized network visibility and continuous asset discovery. Monitor devices, detect change, and stay aware across distributed networks.",
+        "install_methods": [
+          {
+            "type": "default",
+            "script": "ct/netalertx.sh",
+            "resources": {
+              "cpu": 2,
+              "ram": 2048,
+              "hdd": 8,
+              "os": "debian",
+              "version": "13"
+            }
+          }
+        ],
+        "default_credentials": {
+          "username": null,
+          "password": null
+        },
+        "notes": []
+      }
