@@ -15,7 +15,7 @@ network_check
 update_os
 
 msg_info "Installing Dependencies"
-$STD apt-get install -y \
+$STD apt install -y --no-install-recommends \
     nginx \
     sqlite3 \
     dnsutils \
@@ -48,12 +48,23 @@ $STD apt-get install -y \
     tini \
     snmp \
     libcap2-bin \
-    gettext-base
+    gettext-base \
+    lsb-release \
+    gnupg2 \
+    debian-archive-keyring
 msg_ok "Installed Dependencies"
 
-msg_info "Setting up PHP 8.4"
-PHP_VERSION="8.4" PHP_MODULE="cgi,fpm,sqlite3,curl,gd,mbstring,xml,intl,zip" setup_php
-msg_ok "PHP 8.4 setup complete"
+PHP_VERSION="8.4" \
+PHP_MODULE="cgi,fpm,sqlite3,curl,gd,mbstring,xml,intl,zip" \
+setup_php
+
+CLEAN_INSTALL=1 fetch_and_deploy_gh_release "netalertx" "netalertx/NetAlertX" "tarball" "latest" "/opt/netalertx"
+
+echo"# ====== johe - OK ================================================================================="
+# ====== johe - OK =================================================================================
+# ====== johe - to be checked ======================================================================
+
+
 
 msg_info "Cloning NetAlertX Repository"
 INSTALL_DIR="/app"

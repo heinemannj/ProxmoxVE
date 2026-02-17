@@ -30,12 +30,12 @@ function update_script() {
     exit 1
   fi
 
-  if check_for_gh_release "NetAlertX" "netalertx/NetAlertX"; then
+  if check_for_gh_release "netalertx" "netalertx/NetAlertX"; then
     msg_info "Stopping Services"
-    systemctl stop netalertx.service
+    systemctl stop netalertx php8.4-fpm nginx
     msg_ok "Stopped Services"
 
-    fetch_and_deploy_gh_release "NetAlertX" "netalertx/NetAlertX" "tarball" "latest" "/opt/netalertx" "*.tar.gz"
+    fetch_and_deploy_gh_release "netalertx" "netalertx/NetAlertX" "tarball" "latest" "/opt/netalertx" "*.tar.gz"
 
     #msg_info "Updating ${APP}"
     #cd /app || exit 1
@@ -56,7 +56,7 @@ function update_script() {
     #msg_ok "Updated Python Dependencies"
 
     msg_info "Starting Services"
-    systemctl start netalertx.service
+    systemctl start netalertx php8.4-fpm nginx
     msg_ok "Started Services"
     msg_ok "Updated successfully!"
   fi
