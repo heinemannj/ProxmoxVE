@@ -60,23 +60,18 @@ setup_php
 
 CLEAN_INSTALL=1 fetch_and_deploy_gh_release "netalertx" "netalertx/NetAlertX" "tarball" "latest" "/opt/netalertx"
 
-echo "# ====== johe - OK ================================================================================="
-
-# ====== johe - to be checked ======================================================================
-
-
-
-msg_info "Cloning NetAlertX Repository"
 INSTALL_DIR="/app"
-# Default repository and branch if not specified
-REPO_URL="${REPO_URL:-https://github.com/netalertx/NetAlertX.git}"
-REPO_BRANCH="${REPO_BRANCH:-main}"
-
 # Ensure directory is empty
 rm -rf "$INSTALL_DIR"
-msg_info "Cloning NetAlertX (${REPO_BRANCH})"
-git clone --branch "$REPO_BRANCH" "$REPO_URL" "$INSTALL_DIR" --quiet
+mkdir -p "$INSTALL_DIR"
+cp -r /opt/netalertx/* "$INSTALL_DIR"/
 cd "$INSTALL_DIR" || exit
+
+
+echo "# ====== johe - OK ================================================================================="
+
+
+# ====== johe - to be checked ======================================================================
 
 # Remove symlink placeholders from the repository to ensure they become persistent directories
 rm -rf api log db config
@@ -90,7 +85,6 @@ fi
 if [ ! -f "$INSTALL_DIR/front/buildtimestamp.txt" ]; then
   date +%s > "$INSTALL_DIR/front/buildtimestamp.txt"
 fi
-msg_ok "Cloned NetAlertX Repository"
 
 # ============================================================================
 msg_info "Installing Python Dependencies"
