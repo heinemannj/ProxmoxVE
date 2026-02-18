@@ -115,10 +115,10 @@ BINARY_NBTSCAN=$(command -v nbtscan)
 BINARY_TRACEROUTE=$(command -v traceroute)
 #BINARY_PYTHON=$(readlink -f /opt/netalertx-env/bin/python)
 
-[[ -n "$BINARY_NMAP" ]] && setcap cap_net_raw,cap_net_admin+eip "$BINARY_NMAP" || true
-[[ -n "$BINARY_ARPSCAN" ]] && setcap cap_net_raw,cap_net_admin+eip "$BINARY_ARPSCAN" || true
-[[ -n "$BINARY_NBTSCAN" ]] && setcap cap_net_raw,cap_net_admin,cap_net_bind_service+eip "$BINARY_NBTSCAN" || true
-[[ -n "$BINARY_TRACEROUTE" ]] && setcap cap_net_raw,cap_net_admin+eip "$BINARY_TRACEROUTE" || true
+$STD [[ -n "$BINARY_NMAP" ]] && setcap cap_net_raw,cap_net_admin+eip "$BINARY_NMAP" || true
+$STD [[ -n "$BINARY_ARPSCAN" ]] && setcap cap_net_raw,cap_net_admin+eip "$BINARY_ARPSCAN" || true
+$STD [[ -n "$BINARY_NBTSCAN" ]] && setcap cap_net_raw,cap_net_admin,cap_net_bind_service+eip "$BINARY_NBTSCAN" || true
+$STD [[ -n "$BINARY_TRACEROUTE" ]] && setcap cap_net_raw,cap_net_admin+eip "$BINARY_TRACEROUTE" || true
 # Dropped setcap on python binary as it is a security risk. Sudoers is used instead.
 msg_ok "Applied Security Capabilities"
 
@@ -147,7 +147,6 @@ else
   msg_error "Sudoers syntax validation failed"
   # Don't exit, just warn, as app might still run partially
 fi
-msg_ok "Configured Sudoers"
 
 msg_info "Setting up Database and Configuration"
 # Copy starter database and config files
@@ -222,16 +221,16 @@ chmod -R ug+rwX "${INSTALL_DIR}/log" "${INSTALL_DIR}/api"
 # Create log and API files as www-data user
 sudo -u www-data touch ${INSTALL_DIR}/log/{app.log,execution_queue.log,app_front.log,app.php_errors.log,stderr.log,stdout.log,db_is_locked.log}
 sudo -u www-data touch ${INSTALL_DIR}/api/user_notifications.json
-msg_ok "Setup up Directory Permission and Ownership"
+msg_ok "Setup Directory Permission and Ownership"
 
 msg_info "Starting NGINX"
-systemctl enable nginx
-systemctl restart nginx
+$STD systemctl enable nginx
+$STD systemctl restart nginx
 msg_ok "Started NGINX"
 
 msg_info "Starting PHP-FPM"
-systemctl enable php8.4-fpm
-systemctl start php8.4-fpm
+$STD systemctl enable php8.4-fpm
+$STD systemctl start php8.4-fpm
 msg_ok "Started PHP-FPM"
 
 msg_info "Configuring NetAlertX Service"
@@ -307,9 +306,9 @@ WantedBy=multi-user.target
 EOF
 
 # Enable and start service
-systemctl daemon-reload
-systemctl enable netalertx.service
-systemctl start netalertx.service
+$STD systemctl daemon-reload
+$STD systemctl enable netalertx.service
+$STD systemctl start netalertx.service
 
 # Verify service is running
 if systemctl is-active --quiet netalertx.service; then
