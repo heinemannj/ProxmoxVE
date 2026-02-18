@@ -60,26 +60,15 @@ setup_php
 
 CLEAN_INSTALL=1 fetch_and_deploy_gh_release "netalertx" "netalertx/NetAlertX" "tarball" "latest" "/opt/netalertx"
 
+msg_info "Creating Directory Structure"
 INSTALL_DIR="/app"
 
 # Ensure directory is empty
 rm -rf "$INSTALL_DIR"
 mkdir -p "$INSTALL_DIR"
 
-# Copy files to installation directory
+# Copy tarball files to installation directory
 cp -r /opt/netalertx/* "$INSTALL_DIR"/
-
-msg_info "Installing Python Dependencies"
-# Python venv creation
-python3 -m venv /opt/netalertx-env
-# shellcheck disable=SC1091
-source /opt/netalertx-env/bin/activate
-$STD python -m pip install --upgrade pip
-if [ -f "$INSTALL_DIR/requirements.txt" ]; then
-    $STD python -m pip install -r "$INSTALL_DIR/requirements.txt"
-fi
-deactivate
-msg_ok "Installed Python Dependencies"
 
 # Create a /data symlink as a fail-safe for application hardcoded paths
 if [ ! -e /data ]; then
@@ -101,6 +90,19 @@ ln -sfn $INSTALL_DIR/log /tmp/log
 if [ ! -f "$INSTALL_DIR/front/buildtimestamp.txt" ]; then
   date +%s > "$INSTALL_DIR/front/buildtimestamp.txt"
 fi
+msg_ok "Created Directory Structure"
+
+msg_info "Installing Python Dependencies"
+# Python venv creation
+python3 -m venv /opt/netalertx-env
+# shellcheck disable=SC1091
+source /opt/netalertx-env/bin/activate
+$STD python -m pip install --upgrade pip
+if [ -f "$INSTALL_DIR/requirements.txt" ]; then
+    $STD python -m pip install -r "$INSTALL_DIR/requirements.txt"
+fi
+deactivate
+msg_ok "Installed Python Dependencies"
 
 msg_info "Applying Security Capabilities"
 # Dynamically find binary paths as they can vary between /usr/bin and /usr/sbin
