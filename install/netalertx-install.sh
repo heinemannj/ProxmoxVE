@@ -72,7 +72,7 @@ cp -r /opt/netalertx/* ${INSTALL_DIR}/
 
 # Create a /data symlink as a fail-safe for application hardcoded paths
 if [ ! -e /data ]; then
-  ln -s ${INSTALL_DIR} /data
+  ln -sf ${INSTALL_DIR} /data
 fi
 
 # Remove symlink placeholders from the repository to ensure they become persistent directories
@@ -83,8 +83,8 @@ mkdir -p ${INSTALL_DIR}/api ${INSTALL_DIR}/log ${INSTALL_DIR}/db ${INSTALL_DIR}/
 mkdir -p ${INSTALL_DIR}/log/plugins
 
 # Create symlinks in /tmp as well for double fail-safe (some PHP modules use /tmp/api)
-ln -sf ${INSTALL_DIR}/api /tmp/api
-ln -sf ${INSTALL_DIR}/log /tmp/log
+ln -sf ${INSTALL_DIR}/api /tmp/
+ln -sf ${INSTALL_DIR}/log /tmp/
 
 # Create buildtimestamp if it doesn't exist
 if [ ! -f "${INSTALL_DIR}/front/buildtimestamp.txt" ]; then
@@ -115,10 +115,10 @@ BINARY_NBTSCAN=$(command -v nbtscan)
 BINARY_TRACEROUTE=$(command -v traceroute)
 #BINARY_PYTHON=$(readlink -f /opt/netalertx-env/bin/python)
 
-$STD [[ -n "$BINARY_NMAP" ]] && setcap cap_net_raw,cap_net_admin+eip "$BINARY_NMAP" || true
-$STD [[ -n "$BINARY_ARPSCAN" ]] && setcap cap_net_raw,cap_net_admin+eip "$BINARY_ARPSCAN" || true
-$STD [[ -n "$BINARY_NBTSCAN" ]] && setcap cap_net_raw,cap_net_admin,cap_net_bind_service+eip "$BINARY_NBTSCAN" || true
-$STD [[ -n "$BINARY_TRACEROUTE" ]] && setcap cap_net_raw,cap_net_admin+eip "$BINARY_TRACEROUTE" || true
+[[ -n "$BINARY_NMAP" ]] && setcap cap_net_raw,cap_net_admin+eip "$BINARY_NMAP" || true
+[[ -n "$BINARY_ARPSCAN" ]] && setcap cap_net_raw,cap_net_admin+eip "$BINARY_ARPSCAN" || true
+[[ -n "$BINARY_NBTSCAN" ]] && setcap cap_net_raw,cap_net_admin,cap_net_bind_service+eip "$BINARY_NBTSCAN" || true
+[[ -n "$BINARY_TRACEROUTE" ]] && setcap cap_net_raw,cap_net_admin+eip "$BINARY_TRACEROUTE" || true
 # Dropped setcap on python binary as it is a security risk. Sudoers is used instead.
 msg_ok "Applied Security Capabilities"
 
@@ -249,21 +249,21 @@ cat > "${INSTALL_DIR}/start.netalertx.sh" <<EOF
 #!/usr/bin/env bash
 
 # NetAlertX environment variables
-export NETALERTX_CONFIG=/app/config
-export NETALERTX_LOG=/app/log
-export NETALERTX_DATA=/app
-export NETALERTX_API=/app/api
-export NETALERTX_TMP=/app
+export NETALERTX_CONFIG=${INSTALL_DIR}/config
+export NETALERTX_LOG=${INSTALL_DIR}/log
+export NETALERTX_DATA=${INSTALL_DIR}
+export NETALERTX_API=${INSTALL_DIR}/api
+export NETALERTX_TMP=${INSTALL_DIR}/tmp
 export PORT=${PORT}
-export PYTHONPATH=/app
+export PYTHONPATH=${INSTALL_DIR}
 
 # Create symlinks in /tmp as well for double fail-safe (some PHP modules use /tmp/api)
-ln -sf ${INSTALL_DIR}/api /tmp/api
-ln -sf ${INSTALL_DIR}/log /tmp/log
+ln -sf ${INSTALL_DIR}/api /tmp/
+ln -sf ${INSTALL_DIR}/log /tmp/
 
 # Ensure package structure exists (Self-healing)
-touch /app/front/__init__.py
-touch /app/front/plugins/__init__.py
+touch ${INSTALL_DIR}/front/__init__.py
+touch ${INSTALL_DIR}/front/plugins/__init__.py
 
 # Activate the virtual python environment
 source /opt/netalertx-env/bin/activate
@@ -277,7 +277,7 @@ echo -e "Starting NetAlertX - navigate to http://\${SERVER_IP}:\${PORT}"
 echo -e "--------------------------------------------------------------------------"
 
 # Start the NetAlertX python script
-cd /app
+cd ${INSTALL_DIR}
 python server/
 EOF
 
@@ -294,8 +294,8 @@ Wants=network-online.target
 Type=simple
 User=www-data
 Group=www-data
-ExecStart=/app/start.netalertx.sh
-WorkingDirectory=/app
+ExecStart=${INSTALL_DIR}/start.netalertx.sh
+WorkingDirectory=${INSTALL_DIR}
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal
