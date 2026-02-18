@@ -83,8 +83,8 @@ mkdir -p ${INSTALL_DIR}/api ${INSTALL_DIR}/log ${INSTALL_DIR}/db ${INSTALL_DIR}/
 mkdir -p ${INSTALL_DIR}/log/plugins
 
 # Create symlinks in /tmp as well for double fail-safe (some PHP modules use /tmp/api)
-ln -sfn ${INSTALL_DIR}/api /tmp/api
-ln -sfn ${INSTALL_DIR}/log /tmp/log
+ln -sf ${INSTALL_DIR}/api /tmp/api
+ln -sf ${INSTALL_DIR}/log /tmp/log
 
 # Create buildtimestamp if it doesn't exist
 if [ ! -f "${INSTALL_DIR}/front/buildtimestamp.txt" ]; then
@@ -190,7 +190,7 @@ fi
 
 # Create web directory and symbolic link
 mkdir -p /var/www/html
-ln -sfn "${INSTALL_DIR}/front" /var/www/html/netalertx
+ln -sf "${INSTALL_DIR}/front" /var/www/html/netalertx
 
 # Copy and configure NGINX config
 cp "${INSTALL_DIR}/install/proxmox/netalertx.conf" "${INSTALL_DIR}/config/netalertx.conf"
@@ -199,7 +199,7 @@ cp "${INSTALL_DIR}/install/proxmox/netalertx.conf" "${INSTALL_DIR}/config/netale
 sed -i "s/listen 20211;/listen ${PORT};/g" "${INSTALL_DIR}/config/netalertx.conf"
 
 # Create symbolic link to NGINX configuration
-ln -sfn "${INSTALL_DIR}/config/netalertx.conf" /etc/nginx/conf.d/netalertx.conf
+ln -sf "${INSTALL_DIR}/config/netalertx.conf" /etc/nginx/conf.d/netalertx.conf
 
 # Postpone PHP-FPM socket detection until after service start, or use a fallback.
 # For now, we configure a default and assume the standard Debian 13/Ubuntu 24 location.
@@ -256,6 +256,10 @@ export NETALERTX_API=/app/api
 export NETALERTX_TMP=/app
 export PORT=${PORT}
 export PYTHONPATH=/app
+
+# Create symlinks in /tmp as well for double fail-safe (some PHP modules use /tmp/api)
+ln -sf ${INSTALL_DIR}/api /tmp/api
+ln -sf ${INSTALL_DIR}/log /tmp/log
 
 # Ensure package structure exists (Self-healing)
 touch /app/front/__init__.py
