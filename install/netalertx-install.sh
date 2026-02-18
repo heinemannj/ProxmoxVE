@@ -25,6 +25,7 @@ $STD apt install -y --no-install-recommends \
     python3-dev \
     python3-pip \
     python3-venv \
+    python3-psutil \
     iproute2 \
     nmap \
     fping \
@@ -216,7 +217,7 @@ msg_info "Setting up Directory Permission and Ownership"
 # NetAlertX needs write access to front/ for some features, and broad access to /app
 chgrp -R www-data ${INSTALL_DIR}
 chmod -R a+rwx ${INSTALL_DIR}
-chown -R www-data:www-data "${INSTALL_DIR}/db/app.db" "${INSTALL_DIR}/log" "${INSTALL_DIR}/api"
+chown -R www-data:www-data "${INSTALL_DIR}/db" "${INSTALL_DIR}/log" "${INSTALL_DIR}/api"
 chmod -R ug+rwX "${INSTALL_DIR}/log" "${INSTALL_DIR}/api"
 # Create log and API files as www-data user
 sudo -u www-data touch ${INSTALL_DIR}/log/{app.log,execution_queue.log,app_front.log,app.php_errors.log,stderr.log,stdout.log,db_is_locked.log}
