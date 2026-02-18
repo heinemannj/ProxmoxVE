@@ -314,6 +314,7 @@ EOF
 $STD systemctl daemon-reload
 $STD systemctl enable netalertx.service
 $STD systemctl start netalertx.service
+$STD systemctl restart nginx
 
 # Verify service is running
 if systemctl is-active --quiet netalertx.service; then
