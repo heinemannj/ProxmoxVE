@@ -61,62 +61,63 @@ setup_php
 CLEAN_INSTALL=1 fetch_and_deploy_gh_release "netalertx" "netalertx/NetAlertX" "tarball" "latest" "/opt/netalertx"
 
 INSTALL_DIR="/app"
+
 # Ensure directory is empty
 rm -rf "$INSTALL_DIR"
 mkdir -p "$INSTALL_DIR"
+
+# Copy files to installation directory
 cp -r /opt/netalertx/* "$INSTALL_DIR"/
-cd "$INSTALL_DIR" || exit
 
-echo "# ====== johe - OK ================================================================================="
-
-# ====== johe - to be checked ======================================================================
-
-# Remove symlink placeholders from the repository to ensure they become persistent directories
-rm -rf api log db config
-
-# Create a /data symlink as a fail-safe for application hardcoded paths
-if [ ! -e /data ]; then
-  ln -s /app /data
-fi
-
-# Create buildtimestamp if it doesn't exist
-if [ ! -f "$INSTALL_DIR/front/buildtimestamp.txt" ]; then
-  date +%s > "$INSTALL_DIR/front/buildtimestamp.txt"
-fi
-
-# ============================================================================
 msg_info "Installing Python Dependencies"
 # Python venv creation
 python3 -m venv /opt/netalertx-env
 # shellcheck disable=SC1091
 source /opt/netalertx-env/bin/activate
 $STD python -m pip install --upgrade pip
-if [ -f "${INSTALL_DIR:-/app}/install/proxmox/requirements.txt" ]; then
-    $STD python -m pip install -r "${INSTALL_DIR:-/app}/install/proxmox/requirements.txt"
+if [ -f "$INSTALL_DIR/requirements.txt" ]; then
+    $STD python -m pip install -r "$INSTALL_DIR/requirements.txt"
 fi
 deactivate
 msg_ok "Installed Python Dependencies"
 
-# ============================================================================
+# Create a /data symlink as a fail-safe for application hardcoded paths
+if [ ! -e /data ]; then
+  ln -s $INSTALL_DIR /data
+fi
+
+# Remove symlink placeholders from the repository to ensure they become persistent directories
+rm -rf $INSTALL_DIR/api $INSTALL_DIR/log $INSTALL_DIR/db $INSTALL_DIR/config
+
+# Create persistent directories
+mkdir -p $INSTALL_DIR/api $INSTALL_DIR/log $INSTALL_DIR/db $INSTALL_DIR/config
+mkdir -p "${INSTALL_DIR}/log/plugins"
+
+# Create symlinks in /tmp as well for double fail-safe (some PHP modules use /tmp/api)
+ln -sfn $INSTALL_DIR/api /tmp/api
+ln -sfn $INSTALL_DIR/log /tmp/log
+
+# Create buildtimestamp if it doesn't exist
+if [ ! -f "$INSTALL_DIR/front/buildtimestamp.txt" ]; then
+  date +%s > "$INSTALL_DIR/front/buildtimestamp.txt"
+fi
+
 msg_info "Applying Security Capabilities"
 # Dynamically find binary paths as they can vary between /usr/bin and /usr/sbin
 BINARY_NMAP=$(command -v nmap)
 BINARY_ARPSCAN=$(command -v arp-scan)
 BINARY_NBTSCAN=$(command -v nbtscan)
 BINARY_TRACEROUTE=$(command -v traceroute)
-BINARY_PYTHON=$(readlink -f /opt/netalertx-env/bin/python)
+#BINARY_PYTHON=$(readlink -f /opt/netalertx-env/bin/python)
 
 [[ -n "$BINARY_NMAP" ]] && setcap cap_net_raw,cap_net_admin+eip "$BINARY_NMAP" || true
 [[ -n "$BINARY_ARPSCAN" ]] && setcap cap_net_raw,cap_net_admin+eip "$BINARY_ARPSCAN" || true
 [[ -n "$BINARY_NBTSCAN" ]] && setcap cap_net_raw,cap_net_admin,cap_net_bind_service+eip "$BINARY_NBTSCAN" || true
 [[ -n "$BINARY_TRACEROUTE" ]] && setcap cap_net_raw,cap_net_admin+eip "$BINARY_TRACEROUTE" || true
 # Dropped setcap on python binary as it is a security risk. Sudoers is used instead.
-msg_ok "Security capabilities applied"
-msg_ok "Installed Python Dependencies"
+msg_ok "Applied Security Capabilities"
 
-# ============================================================================
 msg_info "Configuring NGINX"
-
 # Set default port
 PORT="${PORT:-20211}"
 
@@ -131,13 +132,7 @@ fi
 mkdir -p /var/www/html
 ln -sfn "${INSTALL_DIR}/front" /var/www/html/netalertx
 
-# Create symlinks in /tmp as well for double fail-safe (some PHP modules use /tmp/api)
-mkdir -p /app/api /app/log
-ln -sfn /app/api /tmp/api
-ln -sfn /app/log /tmp/log
-
 # Copy and configure NGINX config
-mkdir -p "${INSTALL_DIR}/config"
 cp "${INSTALL_DIR}/install/proxmox/netalertx.conf" "${INSTALL_DIR}/config/netalertx.conf"
 
 # Update port in NGINX config
@@ -160,11 +155,15 @@ systemctl enable nginx
 systemctl restart nginx
 msg_ok "Configured NGINX"
 
+
+echo "# ====== johe - OK ================================================================================="
+
+# ====== johe - to be checked ======================================================================
+
+cd "$INSTALL_DIR" || exit
+
 # ============================================================================
 msg_info "Creating Directory Structure"
-
-# Create persistent directories
-mkdir -p "${INSTALL_DIR}/log/plugins" "${INSTALL_DIR}/api"
 
 # Set permissions FIRST so www-data can create files (Fixes Turn 499)
 chown -R www-data:www-data "${INSTALL_DIR}/log" "${INSTALL_DIR}/api"
