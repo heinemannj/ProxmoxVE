@@ -64,31 +64,31 @@ msg_info "Creating Directory Structure"
 INSTALL_DIR="/app"
 
 # Ensure directory is empty
-rm -rf "$INSTALL_DIR"
-mkdir -p "$INSTALL_DIR"
+rm -rf ${INSTALL_DIR}
+mkdir -p ${INSTALL_DIR}
 
 # Copy tarball files to installation directory
-cp -r /opt/netalertx/* "$INSTALL_DIR"/
+cp -r /opt/netalertx/* ${INSTALL_DIR}/
 
 # Create a /data symlink as a fail-safe for application hardcoded paths
 if [ ! -e /data ]; then
-  ln -s $INSTALL_DIR /data
+  ln -s ${INSTALL_DIR} /data
 fi
 
 # Remove symlink placeholders from the repository to ensure they become persistent directories
-rm -rf $INSTALL_DIR/api $INSTALL_DIR/log $INSTALL_DIR/db $INSTALL_DIR/config
+rm -rf ${INSTALL_DIR}/api ${INSTALL_DIR}/log ${INSTALL_DIR}/db ${INSTALL_DIR}/config
 
 # Create persistent directories
-mkdir -p $INSTALL_DIR/api $INSTALL_DIR/log $INSTALL_DIR/db $INSTALL_DIR/config
-mkdir -p "${INSTALL_DIR}/log/plugins"
+mkdir -p ${INSTALL_DIR}/api ${INSTALL_DIR}/log ${INSTALL_DIR}/db ${INSTALL_DIR}/config
+mkdir -p ${INSTALL_DIR}/log/plugins
 
 # Create symlinks in /tmp as well for double fail-safe (some PHP modules use /tmp/api)
-ln -sfn $INSTALL_DIR/api /tmp/api
-ln -sfn $INSTALL_DIR/log /tmp/log
+ln -sfn ${INSTALL_DIR}/api /tmp/api
+ln -sfn ${INSTALL_DIR}/log /tmp/log
 
 # Create buildtimestamp if it doesn't exist
-if [ ! -f "$INSTALL_DIR/front/buildtimestamp.txt" ]; then
-  date +%s > "$INSTALL_DIR/front/buildtimestamp.txt"
+if [ ! -f "${INSTALL_DIR}/front/buildtimestamp.txt" ]; then
+  date +%s > "${INSTALL_DIR}/front/buildtimestamp.txt"
 fi
 msg_ok "Created Directory Structure"
 
@@ -98,8 +98,8 @@ python3 -m venv /opt/netalertx-env
 # shellcheck disable=SC1091
 source /opt/netalertx-env/bin/activate
 $STD python -m pip install --upgrade pip
-if [ -f "$INSTALL_DIR/requirements.txt" ]; then
-    $STD python -m pip install -r "$INSTALL_DIR/requirements.txt"
+if [ -f "${INSTALL_DIR}/requirements.txt" ]; then
+    $STD python -m pip install -r "${INSTALL_DIR}/requirements.txt"
 fi
 deactivate
 msg_ok "Installed Python Dependencies"
@@ -162,7 +162,7 @@ echo "# ====== johe - OK =======================================================
 
 # ====== johe - to be checked ======================================================================
 
-cd "$INSTALL_DIR" || exit
+cd "${INSTALL_DIR}" || exit
 
 # ============================================================================
 msg_info "Creating Directory Structure"
@@ -198,7 +198,7 @@ if [[ -n "$LXC_TZ" ]]; then
 fi
 
 # Set permissions
-chgrp -R www-data "$INSTALL_DIR"
+chgrp -R www-data "${INSTALL_DIR}"
 # NetAlertX needs write access to front/ for some features, and broad access to /app
 chmod -R a+rwx "$INSTALL_DIR"
 chown -R www-data:www-data "${INSTALL_DIR}/db/app.db"
@@ -251,7 +251,7 @@ if [ -z "${SERVER_IP}" ]; then
 fi
 
 # Create startup script
-cat > "$INSTALL_DIR/start.netalertx.sh" <<EOF
+cat > "${INSTALL_DIR}/start.netalertx.sh" <<EOF
 #!/usr/bin/env bash
 
 # NetAlertX environment variables
@@ -283,7 +283,7 @@ cd /app
 python server/
 EOF
 
-chmod +x "$INSTALL_DIR/start.netalertx.sh"
+chmod +x "${INSTALL_DIR}/start.netalertx.sh"
 
 # Create systemd service
 cat > /etc/systemd/system/netalertx.service <<EOF
