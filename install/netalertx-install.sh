@@ -94,7 +94,7 @@ msg_ok "Created Directory Structure"
 
 msg_info "Installing Python Dependencies"
 # Python venv creation
-python3 -m venv /opt/netalertx-env
+$STD python3 -m venv /opt/netalertx-env
 # shellcheck disable=SC1091
 source /opt/netalertx-env/bin/activate
 $STD python -m pip install --upgrade pip
@@ -102,6 +102,9 @@ if [ -f "${INSTALL_DIR}/requirements.txt" ]; then
     $STD python -m pip install -r "${INSTALL_DIR}/requirements.txt"
 fi
 deactivate
+# Create missing __init__.py files for Python package recognition
+touch "${INSTALL_DIR}/front/__init__.py"
+touch "${INSTALL_DIR}/front/plugins/__init__.py"
 msg_ok "Installed Python Dependencies"
 
 msg_info "Applying Security Capabilities"
@@ -118,6 +121,62 @@ BINARY_TRACEROUTE=$(command -v traceroute)
 [[ -n "$BINARY_TRACEROUTE" ]] && setcap cap_net_raw,cap_net_admin+eip "$BINARY_TRACEROUTE" || true
 # Dropped setcap on python binary as it is a security risk. Sudoers is used instead.
 msg_ok "Applied Security Capabilities"
+
+msg_info "Configuring Sudoers"
+# Configure sudoers for www-data (Needed for Init Checks & Tools)
+# Build allowed commands list dynamically (filtering out empty detected paths)
+SUDO_CMDS="/opt/netalertx-env/bin/python, /usr/bin/python3"
+for cmd in "$BINARY_NMAP" "$BINARY_ARPSCAN" "$BINARY_NBTSCAN" "$BINARY_TRACEROUTE"; do
+  if [[ -n "$cmd" ]]; then
+    SUDO_CMDS="${SUDO_CMDS}, ${cmd}"
+  fi
+done
+
+# Write to temp file for validation
+cat > /etc/sudoers.d/netalertx.tmp <<EOF
+www-data ALL=(ALL) NOPASSWD: ${SUDO_CMDS}
+EOF
+
+# Validate syntax with visudo
+if visudo -cf /etc/sudoers.d/netalertx.tmp >/dev/null; then
+  mv /etc/sudoers.d/netalertx.tmp /etc/sudoers.d/netalertx
+  chmod 440 /etc/sudoers.d/netalertx
+  msg_ok "Configured Sudoers"
+else
+  rm /etc/sudoers.d/netalertx.tmp
+  msg_error "Sudoers syntax validation failed"
+  # Don't exit, just warn, as app might still run partially
+fi
+msg_ok "Configured Sudoers"
+
+msg_info "Setting up Database and Configuration"
+# Copy starter database and config files
+cp -u "${INSTALL_DIR}/back/app.conf" "${INSTALL_DIR}/config/app.conf"
+cp -u "${INSTALL_DIR}/back/app.db" "${INSTALL_DIR}/db/app.db"
+
+# Sync timezone from system
+LXC_TZ=$(timedatectl show --property=Timezone --value 2>/dev/null || cat /etc/timezone 2>/dev/null || echo "UTC")
+if [[ -n "$LXC_TZ" ]]; then
+  msg_info "Syncing Timezone: $LXC_TZ"
+  sed -i "s|TIMEZONE.*=.*|TIMEZONE = '$LXC_TZ'|g" "${INSTALL_DIR}/config/app.conf"
+  # Also update PHP's fallbacks if necessary (NetAlertX uses the one from app.conf mostly)
+fi
+msg_ok "Database and Configuration Ready"
+
+msg_info "Checking Hardware Vendor Database"
+OUI_FILE="/usr/share/arp-scan/ieee-oui.txt"
+
+if [ ! -f "$OUI_FILE" ]; then
+  msg_info "Updating Hardware Vendor Database"
+  if [ -f "${INSTALL_DIR}/back/update_vendors.sh" ]; then
+    $STD "${INSTALL_DIR}/back/update_vendors.sh"
+    msg_ok "Updated Hardware Vendor Database"
+  else
+    msg_warn "update_vendors.sh not found, skipping"
+  fi
+else
+  msg_ok "Hardware Vendor Database Already Present"
+fi
 
 msg_info "Configuring NGINX"
 # Set default port
@@ -151,94 +210,30 @@ else
     # Fallback pattern for detection during startup if possible
     msg_warn "PHP-FPM socket not found at standard location, will rely on service startup"
 fi
-
-# Enable and start NGINX
-systemctl enable nginx
-systemctl restart nginx
 msg_ok "Configured NGINX"
 
-
-echo "# ====== johe - OK ================================================================================="
-
-# ====== johe - to be checked ======================================================================
-
-cd "${INSTALL_DIR}" || exit
-
-# ============================================================================
-msg_info "Creating Directory Structure"
-
+msg_info "Setting up Directory Permission and Ownership"
 # Set permissions FIRST so www-data can create files (Fixes Turn 499)
-chown -R www-data:www-data "${INSTALL_DIR}/log" "${INSTALL_DIR}/api"
+# NetAlertX needs write access to front/ for some features, and broad access to /app
+chgrp -R www-data ${INSTALL_DIR}
+chmod -R a+rwx ${INSTALL_DIR}
+chown -R www-data:www-data "${INSTALL_DIR}/db/app.db" "${INSTALL_DIR}/log" "${INSTALL_DIR}/api"
 chmod -R ug+rwX "${INSTALL_DIR}/log" "${INSTALL_DIR}/api"
-
 # Create log and API files as www-data user
 sudo -u www-data touch ${INSTALL_DIR}/log/{app.log,execution_queue.log,app_front.log,app.php_errors.log,stderr.log,stdout.log,db_is_locked.log}
 sudo -u www-data touch ${INSTALL_DIR}/api/user_notifications.json
+msg_ok "Setup up Directory Permission and Ownership"
 
-msg_ok "Created Directory Structure"
+msg_info "Starting NGINX"
+systemctl enable nginx
+systemctl restart nginx
+msg_ok "Started NGINX"
 
-# Create missing __init__.py files for Python package recognition
-touch "${INSTALL_DIR}/front/__init__.py"
-touch "${INSTALL_DIR}/front/plugins/__init__.py"
-
-# ============================================================================
-msg_info "Setting up Database and Configuration"
-
-# Copy starter database and config files
-mkdir -p "${INSTALL_DIR}/config" "${INSTALL_DIR}/db"
-cp -u "${INSTALL_DIR}/back/app.conf" "${INSTALL_DIR}/config/app.conf"
-cp -u "${INSTALL_DIR}/back/app.db" "${INSTALL_DIR}/db/app.db"
-
-# Sync timezone from system
-LXC_TZ=$(timedatectl show --property=Timezone --value 2>/dev/null || cat /etc/timezone 2>/dev/null || echo "UTC")
-if [[ -n "$LXC_TZ" ]]; then
-  msg_info "Syncing Timezone: $LXC_TZ"
-  sed -i "s|TIMEZONE.*=.*|TIMEZONE = '$LXC_TZ'|g" "${INSTALL_DIR}/config/app.conf"
-  # Also update PHP's fallbacks if necessary (NetAlertX uses the one from app.conf mostly)
-fi
-
-# Set permissions
-chgrp -R www-data "${INSTALL_DIR}"
-# NetAlertX needs write access to front/ for some features, and broad access to /app
-chmod -R a+rwx "$INSTALL_DIR"
-chown -R www-data:www-data "${INSTALL_DIR}/db/app.db"
-
-# Configure sudoers for www-data (Needed for Init Checks & Tools)
-msg_info "Configuring Sudoers"
-# Build allowed commands list dynamically (filtering out empty detected paths)
-SUDO_CMDS="/opt/netalertx-env/bin/python, /usr/bin/python3"
-for cmd in "$BINARY_NMAP" "$BINARY_ARPSCAN" "$BINARY_NBTSCAN" "$BINARY_TRACEROUTE"; do
-  if [[ -n "$cmd" ]]; then
-    SUDO_CMDS="${SUDO_CMDS}, ${cmd}"
-  fi
-done
-
-# Write to temp file for validation
-cat > /etc/sudoers.d/netalertx.tmp <<EOF
-www-data ALL=(ALL) NOPASSWD: ${SUDO_CMDS}
-EOF
-
-# Validate syntax with visudo
-if visudo -cf /etc/sudoers.d/netalertx.tmp >/dev/null; then
-  mv /etc/sudoers.d/netalertx.tmp /etc/sudoers.d/netalertx
-  chmod 440 /etc/sudoers.d/netalertx
-  msg_ok "Sudoers configured"
-else
-  rm /etc/sudoers.d/netalertx.tmp
-  msg_error "Sudoers syntax validation failed"
-  # Don't exit, just warn, as app might still run partially
-fi
-msg_ok "Sudoers configured"
-
-msg_ok "Database and Configuration Ready"
-
-# ============================================================================
 msg_info "Starting PHP-FPM"
 systemctl enable php8.4-fpm
 systemctl start php8.4-fpm
 msg_ok "Started PHP-FPM"
 
-# ============================================================================
 msg_info "Configuring NetAlertX Service"
 
 # Detect server IP
@@ -323,21 +318,6 @@ else
   msg_error "NetAlertX Service Failed to Start"
   systemctl status netalertx.service --no-pager -l
   exit 1
-fi
-
-msg_info "Checking Hardware Vendor Database"
-OUI_FILE="/usr/share/arp-scan/ieee-oui.txt"
-
-if [ ! -f "$OUI_FILE" ]; then
-  msg_info "Updating Hardware Vendor Database"
-  if [ -f "${INSTALL_DIR}/back/update_vendors.sh" ]; then
-    $STD "${INSTALL_DIR}/back/update_vendors.sh"
-    msg_ok "Updated Hardware Vendor Database"
-  else
-    msg_warn "update_vendors.sh not found, skipping"
-  fi
-else
-  msg_ok "Hardware Vendor Database Already Present"
 fi
 
 motd_ssh
