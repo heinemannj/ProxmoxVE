@@ -12,7 +12,7 @@
         "documentation": "https://docs.netalertx.com/",
         "website": "https://github.com/netalertx/NetAlertX",
         "logo": "https://cdn.jsdelivr.net/gh/selfhst/icons@main/webp/netalertx-light.webp",
-        "config_path": "xxxxxxxxxxxxxxxxx",
+        "config_path": "/app/config/app.conf",
         "description": "Centralized network visibility and continuous asset discovery. Monitor devices, detect change, and stay aware across distributed networks.",
         "install_methods": [
           {
