@@ -62,14 +62,14 @@ mkdir -p "$EncryptionPwdDir"
 $STD gpg --gen-random --armor 2 32 >"$PwdFile"
 $STD gpg --gen-random --armor 2 32 >"$ProvisionerPwdFile"
 
-step ca init --deployment-type=$DeploymentType --ssh --name=$PKIName --dns="$FQDN" --dns="$IP" --address=$LISTENER --provisioner="$PKIProvisioner" --password-file="$PwdFile" --provisioner-password-file="$ProvisionerPwdFile"
+step ca init --deployment-type="$DeploymentType" --ssh --name="$PKIName" --dns="$FQDN" --dns="$IP" --address="$LISTENER" --provisioner="$PKIProvisioner" --password-file="$PwdFile" --provisioner-password-file="$ProvisionerPwdFile"
 
 $STD ln -s "$PwdFile" "$(step path)/password.txt"
 $STD chown -R step:step $(step path)
 $STD chmod -R 700 $(step path)
 $STD step ca provisioner add "$AcmeProvisioner" --type ACME --admin-name "$AcmeProvisioner"
-$STD step ca provisioner update "$PKIProvisioner" --x509-min-dur=$X509MinDur --x509-max-dur=$X509MaxDur --x509-default-dur=$X509DefaultDur --allow-renewal-after-expiry
-$STD step ca provisioner update "$AcmeProvisioner" --x509-min-dur=$X509MinDur --x509-max-dur=$X509MaxDur --x509-default-dur=$X509DefaultDur --allow-renewal-after-expiry
+$STD step ca provisioner update "$PKIProvisioner" --x509-min-dur="$X509MinDur" --x509-max-dur="$X509MaxDur" --x509-default-dur="$X509DefaultDur" --allow-renewal-after-expiry
+$STD step ca provisioner update "$AcmeProvisioner" --x509-min-dur="$X509MinDur" --x509-max-dur="$X509MaxDur" --x509-default-dur="$X509DefaultDur" --allow-renewal-after-expiry
 $STD step certificate install --all $(step path)/certs/root_ca.crt
 
 msg_info "Initializing step-ca"
