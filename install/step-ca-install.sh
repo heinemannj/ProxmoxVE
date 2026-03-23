@@ -42,7 +42,7 @@ IP="${LOCAL_IP}"
 LISTENER=":443"
 
 PKIName="$(prompt_input "Enter PKIName (e.g. MyHomePKI):" "MyHomePKI" 30)"
-PKIProvisioner="$(prompt_input "Enter PKIProvisioner (e.g. pki@$YourDomainName):" "pki@$DomainName" 30)"
+PKIProvisioner="$(prompt_input "Enter PKIProvisioner (e.g. pki@YourDomainName):" "pki@$DomainName" 30)"
 AcmeProvisioner="$(prompt_input "Enter AcmeProvisioner (e.g. acme@YourDomainName):" "acme@$DomainName" 30)"
 X509MinDur="$(prompt_input "Enter X509MinDur (e.g. 48h):" "48h" 30)"
 X509MaxDur="$(prompt_input "Enter X509MaxDur (e.g. 87600h):" "87600h" 30)"
