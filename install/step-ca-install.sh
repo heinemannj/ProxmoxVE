@@ -35,6 +35,7 @@ $STD setcap CAP_NET_BIND_SERVICE=+eip $(which step-ca)
 $STD useradd --user-group --system --home $(step path) --shell /bin/false step
 msg_ok "Installed step-ca and step-cli"
 
+msg_info "Initializing step-ca"
 DeploymentType="standalone"
 FQDN="$(hostname -f)"
 DomainName="$(hostname -d)"
@@ -48,7 +49,6 @@ X509MinDur="$(prompt_input "Enter X509MinDur (e.g. 48h):" "48h" 30)"
 X509MaxDur="$(prompt_input "Enter X509MaxDur (e.g. 87600h):" "87600h" 30)"
 X509DefaultDur="$(prompt_input "Enter PKIName (e.g. X509DefaultDur (e.g. 168h)):" "168h" 30)"
 
-msg_info "Initializing step-ca"
 EncryptionPwdDir="$(step path)/encryption"
 PwdFile="$EncryptionPwdDir/ca.pwd"
 ProvisionerPwdFile="$EncryptionPwdDir/provisioner.pwd"
