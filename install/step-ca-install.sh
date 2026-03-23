@@ -50,14 +50,14 @@ X509DefaultDur="168h"
 while true;
 do
 
-if whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --yesno "Continue with below?\n
+if $STD whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --yesno "Continue with below?\n
 PKIName: $PKIName
 PKIProvisioner: $PKIProvisioner
 AcmeProvisioner: $AcmeProvisioner
 X509MinDur: $X509MinDur
 X509MaxDur: $X509MaxDur
 X509DefaultDur: $X509DefaultDur" --no-button "Change" --yes-button "Continue" 15 70; then
-break
+$STD break
 fi
 
 PKIName=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --inputbox 'PKIName (e.g. MyHomePKI)' 10 50 "$PKIName" 3>&1 1>&2 2>&3)
