@@ -78,6 +78,7 @@ $STD gpg --gen-random --armor 2 32 >"$PwdFile"
 $STD gpg --gen-random --armor 2 32 >"$ProvisionerPwdFile"
 
 msg_info "Initializing step-ca"
+echo
 $STD step ca init \
   --deployment-type=$DeploymentType \
   --ssh \
