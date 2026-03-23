@@ -73,7 +73,7 @@ EncryptionPwdDir="$(step path)/encryption"
 PwdFile="$EncryptionPwdDir/ca.pwd"
 ProvisionerPwdFile="$EncryptionPwdDir/provisioner.pwd"
 
-mkdir -p "$EncryptionPwdDir"
+$STD mkdir -p "$EncryptionPwdDir"
 $STD gpg --gen-random --armor 2 32 >"$PwdFile"
 $STD gpg --gen-random --armor 2 32 >"$ProvisionerPwdFile"
 
@@ -89,9 +89,9 @@ $STD step ca init \
   --password-file="$PwdFile" \
   --provisioner-password-file="$ProvisionerPwdFile"
 
-ln -s "$PwdFile" "$(step path)/password.txt"
-chown -R step:step $(step path)
-chmod -R 700 $(step path)
+$STD ln -s "$PwdFile" "$(step path)/password.txt"
+$STD chown -R step:step $(step path)
+$STD chmod -R 700 $(step path)
 
 $STD step ca provisioner add "$AcmeProvisioner" --type ACME --admin-name "$AcmeProvisioner"
 $STD step ca provisioner update "$PKIProvisioner" \
