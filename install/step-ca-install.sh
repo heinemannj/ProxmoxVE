@@ -35,19 +35,20 @@ $STD setcap CAP_NET_BIND_SERVICE=+eip $(which step-ca)
 $STD useradd --user-group --system --home $(step path) --shell /bin/false step
 msg_ok "Installed step-ca and step-cli"
 
-msg_info "Initializing step-ca"
-DeploymentType="standalone"
-FQDN="$(hostname -f)"
 DomainName="$(hostname -d)"
-IP="${LOCAL_IP}"
-LISTENER=":443"
 
 PKIName="$(prompt_input "Enter PKIName (e.g. MyHomePKI):" "MyHomePKI" 30)"
 PKIProvisioner="$(prompt_input "Enter PKIProvisioner (e.g. pki@YourDomainName):" "pki@$DomainName" 30)"
 AcmeProvisioner="$(prompt_input "Enter AcmeProvisioner (e.g. acme@YourDomainName):" "acme@$DomainName" 30)"
 X509MinDur="$(prompt_input "Enter X509MinDur (e.g. 48h):" "48h" 30)"
 X509MaxDur="$(prompt_input "Enter X509MaxDur (e.g. 87600h):" "87600h" 30)"
-X509DefaultDur="$(prompt_input "Enter PKIName (e.g. X509DefaultDur (e.g. 168h)):" "168h" 30)"
+X509DefaultDur="$(prompt_input "Enter X509DefaultDur (e.g. 168h)):" "168h" 30)"
+
+msg_info "Initializing step-ca"
+DeploymentType="standalone"
+FQDN="$(hostname -f)"
+IP="${LOCAL_IP}"
+LISTENER=":443"
 
 EncryptionPwdDir="$(step path)/encryption"
 PwdFile="$EncryptionPwdDir/ca.pwd"
