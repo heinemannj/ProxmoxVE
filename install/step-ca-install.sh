@@ -59,8 +59,8 @@ PwdFile="$EncryptionPwdDir/ca.pwd"
 ProvisionerPwdFile="$EncryptionPwdDir/provisioner.pwd"
 
 mkdir -p "$EncryptionPwdDir"
-$STD gpg --gen-random --armor 2 32 >"$PwdFile"
-$STD gpg --gen-random --armor 2 32 >"$ProvisionerPwdFile"
+gpg -q --gen-random --armor 2 32 >"$PwdFile"
+gpg -q --gen-random --armor 2 32 >"$ProvisionerPwdFile"
 
 step ca init --deployment-type="$DeploymentType" --ssh --name="$PKIName" --dns="$FQDN" --dns="$IP" --address="$LISTENER" --provisioner="$PKIProvisioner" --password-file="$PwdFile" --provisioner-password-file="$ProvisionerPwdFile"
 
