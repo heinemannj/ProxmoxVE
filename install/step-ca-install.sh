@@ -47,7 +47,7 @@ X509MinDur="48h"
 X509MaxDur="87600h"
 X509DefaultDur="168h"
 
-while true;
+$STD while true;
 do
 
 if $STD whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --yesno "Continue with below?\n
@@ -56,7 +56,7 @@ PKIProvisioner: $PKIProvisioner
 AcmeProvisioner: $AcmeProvisioner
 X509MinDur: $X509MinDur
 X509MaxDur: $X509MaxDur
-X509DefaultDur: $X509DefaultDur" --no-button "Change" --yes-button "Continue" 15 70; then
+X509DefaultDur: $X509DefaultDur" --no-button "Change" --yes-button "Continue" 15 70 3>&1 1>&2 2>&3; then
 $STD break
 fi
 
@@ -87,7 +87,7 @@ $STD step ca init \
   --address=$LISTENER \
   --provisioner="$PKIProvisioner" \
   --password-file="$PwdFile" \
-  --provisioner-password-file="$ProvisionerPwdFile"
+  --provisioner-password-file="$ProvisionerPwdFile" >/dev/null
 
 $STD ln -s "$PwdFile" "$(step path)/password.txt"
 $STD chown -R step:step $(step path)
