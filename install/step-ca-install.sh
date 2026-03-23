@@ -58,11 +58,9 @@ EncryptionPwdDir="$(step path)/encryption"
 PwdFile="$EncryptionPwdDir/ca.pwd"
 ProvisionerPwdFile="$EncryptionPwdDir/provisioner.pwd"
 
-msg_info "Initializing step-ca"
-echo
 mkdir -p "$EncryptionPwdDir"
-$STD gpg --gen-random --armor 2 32 >"$PwdFile"
-$STD gpg --gen-random --armor 2 32 >"$ProvisionerPwdFile"
+gpg --gen-random --armor 2 32 >"$PwdFile"
+gpg --gen-random --armor 2 32 >"$ProvisionerPwdFile"
 
 step ca init \
   --deployment-type=$DeploymentType \
@@ -92,6 +90,8 @@ step ca provisioner update "$AcmeProvisioner" \
    --allow-renewal-after-expiry
 
 $STD step certificate install --all $(step path)/certs/root_ca.crt
+
+msg_info "Initializing step-ca"
 $STD update-ca-certificates
 msg_ok "Initialized step-ca"
 
