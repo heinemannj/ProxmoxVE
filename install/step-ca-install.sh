@@ -50,13 +50,13 @@ X509DefaultDur="168h"
 while true;
 do
 
-if whiptail_yesno=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --yesno "Continue with below?\n
+if whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --yesno "Continue with below?\n
 PKIName: $PKIName
 PKIProvisioner: $PKIProvisioner
 AcmeProvisioner: $AcmeProvisioner
 X509MinDur: $X509MinDur
 X509MaxDur: $X509MaxDur
-X509DefaultDur: $X509DefaultDur" --no-button "Change" --yes-button "Continue" 15 70  >/dev/null 3>&1 1>&2 2>&3); then
+X509DefaultDur: $X509DefaultDur" --no-button "Change" --yes-button "Continue" 15 70; then
 break
 fi
 
