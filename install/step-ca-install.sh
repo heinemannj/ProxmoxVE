@@ -68,7 +68,6 @@ X509MaxDur=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca i
 X509DefaultDur=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --inputbox 'X509DefaultDur (e.g. 168h)' 10 50 "$X509DefaultDur" 3>&1 1>&2 2>&3)
 
 done
-msg_info "Initializing step-ca"
 
 EncryptionPwdDir="$(step path)/encryption"
 PwdFile="$EncryptionPwdDir/ca.pwd"
@@ -78,6 +77,7 @@ mkdir -p "$EncryptionPwdDir"
 $STD gpg --gen-random --armor 2 32 >"$PwdFile"
 $STD gpg --gen-random --armor 2 32 >"$ProvisionerPwdFile"
 
+msg_info "Initializing step-ca"
 $STD step ca init \
   --deployment-type=$DeploymentType \
   --ssh \
