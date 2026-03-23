@@ -57,7 +57,7 @@ AcmeProvisioner: $AcmeProvisioner
 X509MinDur: $X509MinDur
 X509MaxDur: $X509MaxDur
 X509DefaultDur: $X509DefaultDur" --no-button "Change" --yes-button "Continue" 15 70 3>&1 1>&2 2>&3; then
-$STD break
+break
 fi
 
 PKIName=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --inputbox 'PKIName (e.g. MyHomePKI)' 10 50 "$PKIName" 3>&1 1>&2 2>&3)
