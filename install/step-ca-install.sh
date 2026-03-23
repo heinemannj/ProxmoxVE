@@ -59,11 +59,11 @@ PwdFile="$EncryptionPwdDir/ca.pwd"
 ProvisionerPwdFile="$EncryptionPwdDir/provisioner.pwd"
 
 msg_info "Initializing step-ca"
-$STD mkdir -p "$EncryptionPwdDir"
+mkdir -p "$EncryptionPwdDir"
 $STD gpg --gen-random --armor 2 32 >"$PwdFile"
 $STD gpg --gen-random --armor 2 32 >"$ProvisionerPwdFile"
 
-$STD step ca init \
+step ca init \
   --deployment-type=$DeploymentType \
   --ssh \
   --name=$PKIName \
@@ -78,13 +78,13 @@ $STD ln -s "$PwdFile" "$(step path)/password.txt"
 $STD chown -R step:step $(step path)
 $STD chmod -R 700 $(step path)
 
-$STD step ca provisioner add "$AcmeProvisioner" --type ACME --admin-name "$AcmeProvisioner"
-$STD step ca provisioner update "$PKIProvisioner" \
+step ca provisioner add "$AcmeProvisioner" --type ACME --admin-name "$AcmeProvisioner"
+step ca provisioner update "$PKIProvisioner" \
    --x509-min-dur=$X509MinDur \
    --x509-max-dur=$X509MaxDur \
    --x509-default-dur=$X509DefaultDur \
    --allow-renewal-after-expiry > /dev/null 2>&1
-$STD step ca provisioner update "$AcmeProvisioner" \
+step ca provisioner update "$AcmeProvisioner" \
    --x509-min-dur=$X509MinDur \
    --x509-max-dur=$X509MaxDur \
    --x509-default-dur=$X509DefaultDur \
