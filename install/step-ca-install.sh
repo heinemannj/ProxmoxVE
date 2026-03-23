@@ -47,12 +47,12 @@ X509MinDur="48h"
 X509MaxDur="87600h"
 X509DefaultDur="168h"
 
-PKIName="$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --inputbox 'PKIName (e.g. MyHomePKI)' 10 50 "$PKIName" 3>&1 1>&2 2>&3)"
-PKIProvisioner="$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --inputbox 'PKIProvisioner (e.g. pki@$YourDomainName)' 10 50 "$PKIProvisioner" 3>&1 1>&2 2>&3)"
-AcmeProvisioner="$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --inputbox 'AcmeProvisioner (e.g. acme@YourDomainName)' 10 50 "$AcmeProvisioner" 3>&1 1>&2 2>&3)"
-X509MinDur="$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --inputbox 'X509MinDur (e.g. 48h)' 10 50 "$X509MinDur" 3>&1 1>&2 2>&3)"
-X509MaxDur="$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --inputbox 'X509MaxDur (e.g. 87600h)' 10 50 "$X509MaxDur" 3>&1 1>&2 2>&3)"
-X509DefaultDur="$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --inputbox 'X509DefaultDur (e.g. 168h)' 10 50 "$X509DefaultDur" 3>&1 1>&2 2>&3)"
+PKIName="$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --inputbox 'PKIName (e.g. MyHomePKI)' 10 50 "$PKIName" 3>&1 1>&2 2>&3)" > /dev/null 2>&1
+PKIProvisioner="$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --inputbox 'PKIProvisioner (e.g. pki@$YourDomainName)' 10 50 "$PKIProvisioner" 3>&1 1>&2 2>&3)"> /dev/null 2>&1
+AcmeProvisioner="$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --inputbox 'AcmeProvisioner (e.g. acme@YourDomainName)' 10 50 "$AcmeProvisioner" 3>&1 1>&2 2>&3)"> /dev/null 2>&1
+X509MinDur="$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --inputbox 'X509MinDur (e.g. 48h)' 10 50 "$X509MinDur" 3>&1 1>&2 2>&3)"> /dev/null 2>&1
+X509MaxDur="$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --inputbox 'X509MaxDur (e.g. 87600h)' 10 50 "$X509MaxDur" 3>&1 1>&2 2>&3)"> /dev/null 2>&1
+X509DefaultDur="$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --inputbox 'X509DefaultDur (e.g. 168h)' 10 50 "$X509DefaultDur" 3>&1 1>&2 2>&3)"> /dev/null 2>&1
 
 msg_info "Initializing step-ca"
 EncryptionPwdDir="$(step path)/encryption"
