@@ -50,7 +50,7 @@ X509DefaultDur="168h"
 while true;
 do
 
-if $STD whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --yesno "Continue with below?\n
+if whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --yesno "Continue with below?\n
 PKIName: $PKIName
 PKIProvisioner: $PKIProvisioner
 AcmeProvisioner: $AcmeProvisioner
