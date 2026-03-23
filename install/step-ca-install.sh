@@ -35,10 +35,11 @@ $STD setcap CAP_NET_BIND_SERVICE=+eip $(which step-ca)
 $STD useradd --user-group --system --home $(step path) --shell /bin/false step
 msg_ok "Installed step-ca and step-cli"
 
+msg_info "Initializing step-ca"
 DeploymentType="standalone"
-FQDN=$(hostname -f)
-DomainName=$(hostname -d)
-IP=${LOCAL_IP}
+FQDN="$(hostname -f)"
+DomainName="$(hostname -d)"
+IP="${LOCAL_IP}"
 LISTENER=":443"
 PKIName="MyHomePKI"
 PKIProvisioner="pki@$DomainName"
@@ -47,27 +48,12 @@ X509MinDur="48h"
 X509MaxDur="87600h"
 X509DefaultDur="168h"
 
-while true;
-do
-
-if whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --yesno "Continue with below?\n
-PKIName: $PKIName
-PKIProvisioner: $PKIProvisioner
-AcmeProvisioner: $AcmeProvisioner
-X509MinDur: $X509MinDur
-X509MaxDur: $X509MaxDur
-X509DefaultDur: $X509DefaultDur" --no-button "Change" --yes-button "Continue" 15 70 3>&1 1>&2 2>&3; then
-break
-fi
-
-PKIName=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --inputbox 'PKIName (e.g. MyHomePKI)' 10 50 "$PKIName" 3>&1 1>&2 2>&3)
-PKIProvisioner=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --inputbox 'PKIProvisioner (e.g. pki@$YourDomainName)' 10 50 "$PKIProvisioner" 3>&1 1>&2 2>&3)
-AcmeProvisioner=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --inputbox 'AcmeProvisioner (e.g. acme@YourDomainName)' 10 50 "$AcmeProvisioner" 3>&1 1>&2 2>&3)
-X509MinDur=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --inputbox 'X509MinDur (e.g. 48h)' 10 50 "$X509MinDur" 3>&1 1>&2 2>&3)
-X509MaxDur=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --inputbox 'X509MaxDur (e.g. 87600h)' 10 50 "$X509MaxDur" 3>&1 1>&2 2>&3)
-X509DefaultDur=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --inputbox 'X509DefaultDur (e.g. 168h)' 10 50 "$X509DefaultDur" 3>&1 1>&2 2>&3)
-
-done
+PKIName="$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --inputbox 'PKIName (e.g. MyHomePKI)' 10 50 "$PKIName" 3>&1 1>&2 2>&3)"
+PKIProvisioner="$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --inputbox 'PKIProvisioner (e.g. pki@$YourDomainName)' 10 50 "$PKIProvisioner" 3>&1 1>&2 2>&3)"
+AcmeProvisioner="$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --inputbox 'AcmeProvisioner (e.g. acme@YourDomainName)' 10 50 "$AcmeProvisioner" 3>&1 1>&2 2>&3)"
+X509MinDur="$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --inputbox 'X509MinDur (e.g. 48h)' 10 50 "$X509MinDur" 3>&1 1>&2 2>&3)"
+X509MaxDur="$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --inputbox 'X509MaxDur (e.g. 87600h)' 10 50 "$X509MaxDur" 3>&1 1>&2 2>&3)"
+X509DefaultDur="$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --inputbox 'X509DefaultDur (e.g. 168h)' 10 50 "$X509DefaultDur" 3>&1 1>&2 2>&3)"
 
 EncryptionPwdDir="$(step path)/encryption"
 PwdFile="$EncryptionPwdDir/ca.pwd"
@@ -77,8 +63,6 @@ $STD mkdir -p "$EncryptionPwdDir"
 $STD gpg --gen-random --armor 2 32 >"$PwdFile"
 $STD gpg --gen-random --armor 2 32 >"$ProvisionerPwdFile"
 
-msg_info "Initializing step-ca"
-echo
 $STD step ca init \
   --deployment-type=$DeploymentType \
   --ssh \
