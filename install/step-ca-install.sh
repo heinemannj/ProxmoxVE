@@ -47,7 +47,7 @@ X509MinDur="48h"
 X509MaxDur="87600h"
 X509DefaultDur="168h"
 
-$STD while true;
+while true;
 do
 
 if $STD whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --yesno "Continue with below?\n
