@@ -87,23 +87,26 @@ $STD step ca init \
   --address=$LISTENER \
   --provisioner="$PKIProvisioner" \
   --password-file="$PwdFile" \
-  --provisioner-password-file="$ProvisionerPwdFile" >/dev/null
+  --provisioner-password-file="$ProvisionerPwdFile"  > /dev/null 2>&1
 
 $STD ln -s "$PwdFile" "$(step path)/password.txt"
 $STD chown -R step:step $(step path)
 $STD chmod -R 700 $(step path)
 
-$STD step ca provisioner add "$AcmeProvisioner" --type ACME --admin-name "$AcmeProvisioner"
+$STD step ca provisioner add "$AcmeProvisioner" --type ACME --admin-name "$AcmeProvisioner" > /dev/null 2>&1
 $STD step ca provisioner update "$PKIProvisioner" \
    --x509-min-dur=$X509MinDur \
    --x509-max-dur=$X509MaxDur \
    --x509-default-dur=$X509DefaultDur \
-   --allow-renewal-after-expiry
+   --allow-renewal-after-expiry > /dev/null 2>&1
 $STD step ca provisioner update "$AcmeProvisioner" \
    --x509-min-dur=$X509MinDur \
    --x509-max-dur=$X509MaxDur \
    --x509-default-dur=$X509DefaultDur \
-   --allow-renewal-after-expiry
+   --allow-renewal-after-expiry > /dev/null 2>&1
+
+$STD step certificate install --all $(step path)/certs/root_ca.crt
+$STD update-ca-certificates
 msg_ok "Initialized step-ca"
 
 msg_info "Start step-ca as a Daemon"
@@ -164,18 +167,13 @@ EOF
 $STD systemctl enable -q --now step-ca
 msg_ok "Started step-ca as a Daemon"
 
-msg_info "Install root CA certificate into system's default trust store"
-$STD step certificate install --all $(step path)/certs/root_ca.crt
-$STD update-ca-certificates
-msg_ok "Installed root CA certificate into system's default trust store"
-
-msg_info "Install step-batcher to export step-ca badger database"
 StepBadgerX509Certs="$STEPHOME/step-badger-x509Certs.sh"
 StepBadgerSshCerts="$STEPHOME/step-badger-sshCerts.sh"
 
 fetch_and_deploy_gh_release "step-badger" "lukasz-lobocki/step-badger" "prebuild" "latest" "/opt/step-badger" "step-badger_Linux_x86_64.tar.gz"
 ln -s /opt/step-badger/step-badger /usr/local/bin/step-badger
 
+msg_info "Install step-ca helper scripts"
 mkdir --parents "$STEPHOME/db-copy/"
 mkdir --parents "$STEPHOME/certs/ca/"
 mkdir --parents "$STEPHOME/certs/ssh/"
@@ -214,9 +212,7 @@ step-badger sshCerts "$STEPHOME/db-copy" \
 EOF
 chmod 700 $StepBadgerX509Certs
 chmod 700 $StepBadgerSshCerts
-msg_ok "Installed step-batcher to export step-ca badger database"
 
-msg_info "Install step-ca helper scripts"
 StepRequest="$STEPHOME/step-ca-request.sh"
 StepRevoke="$STEPHOME/step-ca-revoke.sh"
 $STD cat <<'EOF' >$StepRequest
