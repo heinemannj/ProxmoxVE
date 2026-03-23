@@ -54,10 +54,10 @@ X509DefaultDur="168h"
 #X509MaxDur="$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --inputbox 'X509MaxDur (e.g. 87600h)' 10 50 "$X509MaxDur" 3>&1 1>&2 2>&3)"
 #X509DefaultDur="$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step ca init options" --inputbox 'X509DefaultDur (e.g. 168h)' 10 50 "$X509DefaultDur" 3>&1 1>&2 2>&3)"
 
+msg_info "Initializing step-ca"
 EncryptionPwdDir="$(step path)/encryption"
 PwdFile="$EncryptionPwdDir/ca.pwd"
 ProvisionerPwdFile="$EncryptionPwdDir/provisioner.pwd"
-
 mkdir -p "$EncryptionPwdDir"
 gpg -q --gen-random --armor 2 32 >"$PwdFile"
 gpg -q --gen-random --armor 2 32 >"$ProvisionerPwdFile"
@@ -71,8 +71,6 @@ $STD step ca provisioner add "$AcmeProvisioner" --type ACME --admin-name "$AcmeP
 $STD step ca provisioner update "$PKIProvisioner" --x509-min-dur="$X509MinDur" --x509-max-dur="$X509MaxDur" --x509-default-dur="$X509DefaultDur" --allow-renewal-after-expiry
 $STD step ca provisioner update "$AcmeProvisioner" --x509-min-dur="$X509MinDur" --x509-max-dur="$X509MaxDur" --x509-default-dur="$X509DefaultDur" --allow-renewal-after-expiry
 $STD step certificate install --all $(step path)/certs/root_ca.crt
-
-msg_info "Initializing step-ca"
 $STD update-ca-certificates
 msg_ok "Initialized step-ca"
 
