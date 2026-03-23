@@ -59,8 +59,8 @@ PwdFile="$EncryptionPwdDir/ca.pwd"
 ProvisionerPwdFile="$EncryptionPwdDir/provisioner.pwd"
 
 mkdir -p "$EncryptionPwdDir"
-gpg --gen-random --armor 2 32 >"$PwdFile"
-gpg --gen-random --armor 2 32 >"$ProvisionerPwdFile"
+$STD gpg --gen-random --armor 2 32 >"$PwdFile"
+$STD gpg --gen-random --armor 2 32 >"$ProvisionerPwdFile"
 
 step ca init \
   --deployment-type=$DeploymentType \
