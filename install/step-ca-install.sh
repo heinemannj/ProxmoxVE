@@ -56,7 +56,7 @@ PKIProvisioner: $PKIProvisioner
 AcmeProvisioner: $AcmeProvisioner
 X509MinDur: $X509MinDur
 X509MaxDur: $X509MaxDur
-X509DefaultDur: $X509DefaultDur" --no-button "Change" --yes-button "Continue" 15 70 3>&1 1>&2 2>&3); then
+X509DefaultDur: $X509DefaultDur" --no-button "Change" --yes-button "Continue" 15 70  >/dev/null 3>&1 1>&2 2>&3); then
 break
 fi
 
