@@ -230,7 +230,8 @@ cat <<'EOF' >$StepRevoke
 #
 # step ca revoke <serialnumber>
 #
-step ca revoke
+SERIAL_NUMBER=$1
+step ca revoke ${SERIAL_NUMBER} || echo "Failed to revoke certificate"; exit
 EOF
 chmod 700 $StepRequest
 chmod 700 $StepRevoke
