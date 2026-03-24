@@ -24,13 +24,13 @@ msg_info "Installing step-ca and step-cli"
 $STD apt install -y step-ca step-cli
 
 STEPHOME="/root/.step"
-$STD export STEPPATH=/etc/step-ca
-$STD export STEPHOME=$STEPHOME
+export STEPPATH=/etc/step-ca
+export STEPHOME=$STEPHOME
 
-$STD sed  -i '1i export STEPPATH=/etc/step-ca' /etc/profile
-$STD sed  -i '1i export STEPHOME=/root/.step' /etc/profile
+sed  -i '1i export STEPPATH=/etc/step-ca' /etc/profile
+sed  -i '1i export STEPHOME=/root/.step' /etc/profile
 
-$STD setcap CAP_NET_BIND_SERVICE=+eip $(which step-ca)
+setcap CAP_NET_BIND_SERVICE=+eip $(which step-ca)
 
 $STD useradd --user-group --system --home $(step path) --shell /bin/false step
 msg_ok "Installed step-ca and step-cli"
@@ -139,7 +139,7 @@ mkdir --parents "$STEPHOME/certs/ca/"
 mkdir --parents "$STEPHOME/certs/ssh/"
 mkdir --parents "$STEPHOME/certs/x509/"
 
-$STD cat <<'EOF' >$StepBadgerX509Certs
+cat <<'EOF' >$StepBadgerX509Certs
 #!/usr/bin/env bash
 #
 # See: https://github.com/lukasz-lobocki/step-badger
@@ -158,7 +158,7 @@ step-badger x509Certs "$STEPHOME/db-copy" \
         --provisioner \
         --algorithm
 EOF
-$STD cat <<'EOF' >$StepBadgerSshCerts
+cat <<'EOF' >$StepBadgerSshCerts
 #!/usr/bin/env bash
 #
 # See: https://github.com/lukasz-lobocki/step-badger
@@ -176,7 +176,7 @@ chmod 700 $StepBadgerSshCerts
 StepRequest="$STEPHOME/step-ca-request.sh"
 StepRevoke="$STEPHOME/step-ca-revoke.sh"
 
-$STD cat <<'EOF' >$StepRequest
+cat <<'EOF' >$StepRequest
 #!/usr/bin/env bash
 #
 StepCertDir="$STEPHOME/certs/x509"
@@ -225,7 +225,7 @@ step ca certificate $FQDN $StepCertDir/$FQDN.crt $StepCertDir/$FQDN.key \
 EOF
 chmod 700 $StepRequest
 
-$STD cat <<'EOF' >$StepRevoke
+cat <<'EOF' >$StepRevoke
 #!/usr/bin/env bash
 #
 # step ca revoke <serialnumber>
