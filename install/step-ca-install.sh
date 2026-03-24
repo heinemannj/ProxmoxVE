@@ -175,27 +175,56 @@ chmod 700 $StepBadgerSshCerts
 
 StepRequest="$STEPHOME/step-ca-request.sh"
 StepRevoke="$STEPHOME/step-ca-revoke.sh"
+
 $STD cat <<'EOF' >$StepRequest
 #!/usr/bin/env bash
 #
 StepCertDir="$STEPHOME/certs/x509"
+PROVISIONER_PASSWORD=$(step path)/encryption/provisioner.pwd
 
-HOST="brw4cd5770e36b4"
-IP="192.168.178.136"
-DOMAIN="fritz.box"
-FQDN=$HOST.$DOMAIN
-VALID_TO="2034-01-31T00:00:00Z"
-PROVISIONER="pki@fritz.box"
+while true;
+do
+
+FQDN=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'FQDN (e.g. MyLXC.example.com)' 10 50 "$FQDN" 3>&1 1>&2 2>&3)
+IP=$(dig +short $FQDN)
+if [[ -z "$IP" ]]; then
+    echo "Resolution failed for $FQDN"
+    exit
+fi
+HOST=$(echo $FQDN | awk -F'.' '{print $1}')
+IP=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'IP Address (e.g. x.x.x.x)' 10 50 "$IP" 3>&1 1>&2 2>&3)
+HOST=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'Hostname (e.g. MyHostName)' 10 50 "$HOST" 3>&1 1>&2 2>&3)
+SAN=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'Subject Alternative Name(s) (SAN) (e.g. myapp-1.example.com, myapp-2.example.com)' 10 50 "$SAN" 3>&1 1>&2 2>&3)
+VALID_TO=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'Validity (e.g. 2034-01-31T00:00:00Z)' 10 50 "2034-01-31T00:00:00Z" 3>&1 1>&2 2>&3)
+
+if whiptail_yesno=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --yesno "Continue with below?\n
+FQDN: $FQDN
+Hostname: $HOST
+IP Address: $IP
+Subject Alternative Name(s) (SAN): $SAN
+Validity: $VALID_TO" --no-button "Change" --yes-button "Continue" 15 70 3>&1 1>&2 2>&3); then
+break
+fi
+
+done
+
+SAN="$FQDN, $HOST, $IP, $SAN"
+
+IFS=', ' read -r -a array <<< "$SAN"
+for element in "${array[@]}"
+do
+    SAN_ARRAY+=(--san "$element")
+done
 
 step ca certificate $FQDN $StepCertDir/$FQDN.crt $StepCertDir/$FQDN.key \
-  --provisioner=$PROVISIONER \
+  --provisioner-password-file=$PROVISIONER_PASSWORD \
   --not-after=$VALID_TO \
-  --san $FQDN \
-  --san $HOST \
-  --san $IP
-
-step certificate inspect $StepCertDir/$FQDN.crt
+  "${SAN_ARRAY[@]}" \
+  && step certificate inspect $StepCertDir/$FQDN.crt \
+  || echo "Failed to request certificate"; exit
 EOF
+chmod 700 $StepRequest
+
 $STD cat <<'EOF' >$StepRevoke
 #!/usr/bin/env bash
 #
