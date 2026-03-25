@@ -131,6 +131,7 @@ fetch_and_deploy_gh_release "step-badger" "lukasz-lobocki/step-badger" "prebuild
 ln -s /opt/step-badger/step-badger /usr/local/bin/step-badger
 
 msg_info "Install step-ca Admin script"
+mkdir -p "$STEPHOME"
 cat <<'ADDON_EOF' >"$STEPHOME/step-ca-admin.sh"
 #!/usr/bin/env bash
 
