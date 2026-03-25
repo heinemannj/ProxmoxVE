@@ -131,7 +131,7 @@ fetch_and_deploy_gh_release "step-badger" "lukasz-lobocki/step-badger" "prebuild
 ln -s /opt/step-badger/step-badger /usr/local/bin/step-badger
 
 msg_info "Install step-ca Admin script"
-cat <<'ADDON_EOF' >$STEPHOME/step-ca-admin.sh
+cat <<'ADDON_EOF' >"$STEPHOME/step-ca-admin.sh"
 #!/usr/bin/env bash
 
 # Copyright (c) 2021-2026 community-scripts ORG
@@ -384,7 +384,7 @@ case ${CERT_TYPE} in
   ;;
 esac
 ADDON_EOF
-chmod 700 $STEPHOME/step-ca-admin.sh
+chmod 700 "$STEPHOME/step-ca-admin.sh"
 msg_ok "Installed step-ca Admin script"
 
 motd_ssh
