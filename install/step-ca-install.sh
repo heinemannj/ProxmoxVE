@@ -130,10 +130,8 @@ msg_ok "Started step-ca as a Daemon"
 fetch_and_deploy_gh_release "step-badger" "lukasz-lobocki/step-badger" "prebuild" "latest" "/opt/step-badger" "step-badger_Linux_x86_64.tar.gz"
 ln -s /opt/step-badger/step-badger /usr/local/bin/step-badger
 
-Step-CA-Admin="$STEPHOME/step-ca-admin.sh"
-
 msg_info "Install step-ca Admin script"
-cat <<'EOF' >$Step-CA-Admin
+cat <<'EOF' >$STEPHOME/step-ca-admin.sh
 #!/usr/bin/env bash
 
 # Copyright (c) 2021-2026 community-scripts ORG
@@ -386,7 +384,7 @@ case ${CERT_TYPE} in
   ;;
 esac
 EOF
-chmod 700 $Step-CA-Admin
+chmod 700 $STEPHOME/step-ca-admin.sh
 msg_ok "Installed step-ca Admin script"
 
 motd_ssh
