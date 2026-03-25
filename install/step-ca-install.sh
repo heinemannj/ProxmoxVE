@@ -127,115 +127,266 @@ EOF
 $STD systemctl enable -q --now step-ca
 msg_ok "Started step-ca as a Daemon"
 
-StepBadgerX509Certs="$STEPHOME/step-badger-x509Certs.sh"
-StepBadgerSshCerts="$STEPHOME/step-badger-sshCerts.sh"
-
 fetch_and_deploy_gh_release "step-badger" "lukasz-lobocki/step-badger" "prebuild" "latest" "/opt/step-badger" "step-badger_Linux_x86_64.tar.gz"
 ln -s /opt/step-badger/step-badger /usr/local/bin/step-badger
 
-msg_info "Install step-ca helper scripts"
+msg_info "Install step-ca Admin script"
+Step-CA-Admin="$STEPHOME/step-ca-admin.sh"
+cat <<'EOF' >$Step-CA-Admin
+#!/usr/bin/env bash
+
+# Copyright (c) 2021-2026 community-scripts ORG
+# Author: Joerg Heinemann (heinemannj)
+# License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
+
+function header_info() {
+  clear
+  cat <<"EOF"
+         __                                 ___       __          _     
+   _____/ /____  ____        _________ _   /   | ____/ /___ ___  (_)___ 
+  / ___/ __/ _ \/ __ \______/ ___/ __ `/  / /| |/ __  / __ `__ \/ / __ \
+ (__  ) /_/  __/ /_/ /_____/ /__/ /_/ /  / ___ / /_/ / / / / / / / / / /
+/____/\__/\___/ .___/      \___/\__,_/  /_/  |_\__,_/_/ /_/ /_/_/_/ /_/ 
+             /_/                                                            
+
+EOF
+}
+
+function die() {
+  echo -e "\n${BL}[ERROR]${GN} ${RD}${1}${CL}\n"
+  exit
+}
+
+function success() {
+  echo -e "${BL}[SUCCESS]${GN} ${1}${CL}\n"
+  exit
+}
+
+function whiptail_menu() {
+  MENU_ARRAY=()
+  MSG_MAX_LENGTH=0
+  while read -r TAG ITEM; do
+    OFFSET=2
+    ((${#ITEM} + OFFSET > MSG_MAX_LENGTH)) && MSG_MAX_LENGTH=${#ITEM}+OFFSET
+    MENU_ARRAY+=("$TAG" "$ITEM " "OFF")
+  done < <(echo "$1")
+}
+
+function x509_list() {
+  cp --recursive --force "$(step path)/db/"* "$STEPHOME/db-copy/"
+  cp --recursive --force "$(step path)/certs/"* "$STEPHOME/certs/ca/"
+  CERT_LIST=$(step-badger x509Certs "${STEPHOME}/db-copy" 2>/dev/null)
+}
+
+function ssh_list() {
+  cp --recursive --force "$(step path)/db/"* "$STEPHOME/db-copy/"
+  cp --recursive --force "$(step path)/certs/"* "$STEPHOME/certs/ca/"
+  CERT_LIST=$(step-badger sshCerts "${STEPHOME}/db-copy" 2>/dev/null)
+}
+
+function x509_serial_to_cn() {
+  x509_list
+  CN="$(echo "${CERT_LIST}" | grep "${SERIAL_NUMBER}" | awk '{print $2}' | sed 's/CN=//g')"
+  CRT="$STEPHOME/certs/x509/$CN.crt"
+  KEY="$STEPHOME/certs/x509/$CN.key"
+  if ! [[ -f ${CRT} ]]; then
+    die "Certificate ${CRT} not found!"
+  elif ! [[ -f ${KEY} ]]; then
+    die "Private Key ${KEY} not found!"
+  fi
+}
+
+function x509_revoke() {
+  # shellcheck disable=SC2206
+  SERIAL_NUMBER_ARRAY=(${CERT_SERIAL_NUMBERS})
+  for SERIAL_NUMBER in "${SERIAL_NUMBER_ARRAY[@]}"; do
+    echo -e "${BL}[Info]${GN} Revoke x509 Certificate with Serial Number ${BL}${SERIAL_NUMBER}${GN}:${CL}"
+    echo
+    TOKEN=$(step ca token --provisioner="$PROVISIONER" --provisioner-password-file="$PROVISIONER_PASSWORD" --revoke "${SERIAL_NUMBER}")
+    step ca revoke --token "$TOKEN" "${SERIAL_NUMBER}" || die "Failed to revoke certificate!"
+    echo
+  done
+  success "Finished."
+}
+
+function x509_renew() {
+  # shellcheck disable=SC2206
+  SERIAL_NUMBER_ARRAY=(${CERT_SERIAL_NUMBERS})
+  for SERIAL_NUMBER in "${SERIAL_NUMBER_ARRAY[@]}"; do
+    echo -e "${BL}[Info]${GN} Renew x509 Certificate with Serial Number ${BL}${SERIAL_NUMBER}${GN}:${CL}"
+    echo
+    x509_serial_to_cn
+    step ca renew "${CRT}" "${KEY}" --force || die "Failed to renew certificate!"
+    echo
+  done
+  success "Finished."
+}
+
+function x509_inspect() {
+  # shellcheck disable=SC2206
+  SERIAL_NUMBER_ARRAY=(${CERT_SERIAL_NUMBERS})
+  for SERIAL_NUMBER in "${SERIAL_NUMBER_ARRAY[@]}"; do
+    echo -e "${BL}[Info]${GN} Inspect x509 Certificate with Serial Number ${BL}${SERIAL_NUMBER}${GN}:${CL}\n"
+    x509_serial_to_cn
+    step certificate inspect "${CRT}" || die "Failed to inspect certificate!"
+    if ! [[ $(step certificate inspect "${CRT}" | grep "${SERIAL_NUMBER}") ]]; then
+      die "Serial Number ${SERIAL_NUMBER} mismatch!"
+    fi
+    echo -e "\n${BL}[Info]${GN} Public Key:${CL}\n"
+    cat "${CRT}"
+    echo -e "\n${BL}[Info]${GN} Private Key:${CL}\n"
+    cat "${KEY}"
+    echo
+  done
+  success "Finished."
+}
+
+function x509_request() {
+  FQDN=""
+  SAN=""
+
+  while true; do
+    FQDN=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'FQDN (e.g. MyLXC.example.com)' 10 50 "$FQDN" 3>&1 1>&2 2>&3)
+    IP=$(dig +short "$FQDN")
+    if [[ -z "$IP" ]]; then
+      die "Resolution failed for $FQDN!"
+    fi
+    HOST=$(echo "$FQDN" | awk -F'.' '{print $1}')
+    IP=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'IP Address (e.g. x.x.x.x)' 10 50 "$IP" 3>&1 1>&2 2>&3)
+    HOST=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'Hostname (e.g. MyHostName)' 10 50 "$HOST" 3>&1 1>&2 2>&3)
+    SAN=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'Subject Alternative Name(s) (SAN) (e.g. myapp-1.example.com, myapp-2.example.com)' 10 50 "$SAN" 3>&1 1>&2 2>&3)
+    VALID_TO=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'Validity (e.g. 2034-01-31T00:00:00Z)' 10 50 "2034-01-31T00:00:00Z" 3>&1 1>&2 2>&3)
+
+    # shellcheck disable=SC2034
+    if whiptail_yesno=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --yesno "Continue with below?\n
+      FQDN: $FQDN
+      Hostname: $HOST
+      IP Address: $IP
+      Subject Alternative Name(s) (SAN): $SAN
+      Validity: $VALID_TO" --no-button "Change" --yes-button "Continue" 15 70 3>&1 1>&2 2>&3); then
+      break
+    fi
+  done
+
+  echo -e "${BL}[Info]${GN} Request x509 Certificate with subject ${BL}${FQDN}${GN}:${CL}"
+  echo
+  CRT="$STEPHOME/certs/x509/$FQDN.crt"
+  KEY="$STEPHOME/certs/x509/$FQDN.key"
+
+  SAN="$FQDN, $HOST, $IP, $SAN"
+
+  IFS=', ' read -r -a array <<< "$SAN"
+  for element in "${array[@]}"
+  do
+    SAN_ARRAY+=(--san "$element")
+  done
+
+  step ca certificate "$FQDN" "$CRT" "$KEY" \
+    --provisioner="$PROVISIONER" \
+    --provisioner-password-file="$PROVISIONER_PASSWORD" \
+    --not-after="$VALID_TO" \
+    "${SAN_ARRAY[@]}" \
+  || die "Failed to request certificate!"
+
+  echo -e "\n${BL}[Info]${GN} Inspect Certificate:${CL}\n"
+  step certificate inspect "${CRT}" || die "Failed to inspect certificate!"
+  echo -e "\n${BL}[Info]${GN} Public Key:${CL}\n"
+  cat "${CRT}"
+  echo -e "\n${BL}[Info]${GN} Private Key:${CL}\n"
+  cat "${KEY}"
+  echo
+  success "Finished."
+}
+
+set -eEuo pipefail
+# shellcheck disable=SC2034
+# shellcheck disable=SC2116
+# shellcheck disable=SC2028
+YW=$(echo "\033[33m")
+# shellcheck disable=SC2116
+# shellcheck disable=SC2028
+BL=$(echo "\033[36m")
+# shellcheck disable=SC2116
+# shellcheck disable=SC2028
+RD=$(echo "\033[01;31m")
+# shellcheck disable=SC2034
+CM='\xE2\x9C\x94\033'
+# shellcheck disable=SC2116
+# shellcheck disable=SC2028
+GN=$(echo "\033[1;92m")
+# shellcheck disable=SC2116
+# shellcheck disable=SC2028
+CL=$(echo "\033[m")
+
+# Telemetry
+# shellcheck disable=SC1090
+source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/api.func) 2>/dev/null || true
+declare -f init_tool_telemetry &>/dev/null && init_tool_telemetry "step-ca-admin" "step-ca"
+
+header_info
+
 mkdir --parents "$STEPHOME/db-copy/"
 mkdir --parents "$STEPHOME/certs/ca/"
 mkdir --parents "$STEPHOME/certs/ssh/"
 mkdir --parents "$STEPHOME/certs/x509/"
 
-cat <<'EOF' >$StepBadgerX509Certs
-#!/usr/bin/env bash
-#
-# See: https://github.com/lukasz-lobocki/step-badger
-#
-
-cp --recursive --force "$(step path)/db/"* "$STEPHOME/db-copy/"
-cp --recursive --force "$(step path)/certs/"* "$STEPHOME/certs/ca/"
-
-step-badger x509Certs "$STEPHOME/db-copy" \
-        --dnsnames \
-        --emailaddresses \
-        --ipaddresses \
-        --uris \
-        --issuer \
-        --crl \
-        --provisioner \
-        --algorithm
-EOF
-cat <<'EOF' >$StepBadgerSshCerts
-#!/usr/bin/env bash
-#
-# See: https://github.com/lukasz-lobocki/step-badger
-#
-
-cp --recursive --force "$(step path)/db/"* "$STEPHOME/db-copy/"
-cp --recursive --force "$(step path)/certs/"* "$STEPHOME/certs/ca/"
-
-step-badger sshCerts "$STEPHOME/db-copy" \
-        --algorithm
-EOF
-chmod 700 $StepBadgerX509Certs
-chmod 700 $StepBadgerSshCerts
-
-StepRequest="$STEPHOME/step-ca-request.sh"
-StepRevoke="$STEPHOME/step-ca-revoke.sh"
-
-cat <<'EOF' >$StepRequest
-#!/usr/bin/env bash
-#
-StepCertDir="$STEPHOME/certs/x509"
+PROVISIONER=$(jq '.authority.provisioners.[] | select(.type=="JWK") | .name' "$(step path)"/config/ca.json)
+PROVISIONER="${PROVISIONER#\"}"
+PROVISIONER="${PROVISIONER%\"}"
 PROVISIONER_PASSWORD=$(step path)/encryption/provisioner.pwd
 
-while true;
-do
+whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Admin" --yesno "This will maintain step-ca issued x509 and ssh Certificates. Proceed?" 10 58
 
-FQDN=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'FQDN (e.g. MyLXC.example.com)' 10 50 "$FQDN" 3>&1 1>&2 2>&3)
-IP=$(dig +short $FQDN)
-if [[ -z "$IP" ]]; then
-    echo "Resolution failed for $FQDN"
-    exit
-fi
-HOST=$(echo $FQDN | awk -F'.' '{print $1}')
-IP=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'IP Address (e.g. x.x.x.x)' 10 50 "$IP" 3>&1 1>&2 2>&3)
-HOST=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'Hostname (e.g. MyHostName)' 10 50 "$HOST" 3>&1 1>&2 2>&3)
-SAN=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'Subject Alternative Name(s) (SAN) (e.g. myapp-1.example.com, myapp-2.example.com)' 10 50 "$SAN" 3>&1 1>&2 2>&3)
-VALID_TO=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'Validity (e.g. 2034-01-31T00:00:00Z)' 10 50 "2034-01-31T00:00:00Z" 3>&1 1>&2 2>&3)
+MENU_ARRAY=("x509" "Maintain x509 Certificates." "ON")
+MENU_ARRAY+=("ssh" "Maintain ssh Certificates." "OFF")
+CERT_TYPE=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Admin" --radiolist "Select Certificate Type:" 16 48 6 "${MENU_ARRAY[@]}" 3>&1 1>&2 2>&3 | tr -d '"')
 
-if whiptail_yesno=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --yesno "Continue with below?\n
-FQDN: $FQDN
-Hostname: $HOST
-IP Address: $IP
-Subject Alternative Name(s) (SAN): $SAN
-Validity: $VALID_TO" --no-button "Change" --yes-button "Continue" 15 70 3>&1 1>&2 2>&3); then
-break
-fi
+[[ -z ${CERT_TYPE} ]] && die "No Certificate Type selected!"
 
-done
+case ${CERT_TYPE} in
+("x509")
+  CA="test"
 
-SAN="$FQDN, $HOST, $IP, $SAN"
+  x509_list
+  whiptail_menu "$(echo "$CERT_LIST" | awk 'NR>1 {print $1 " " $2 "|" $3 "|" $4 "|" $5}')"
+  MENU_ARRAY+=("" "Create a new Certificate" "OFF")
+  CERT_SERIAL_NUMBERS=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificates on ${CA}" --checklist "\nSelect for Maintenance:\n" 16 $((MSG_MAX_LENGTH + 55)) 6 "${MENU_ARRAY[@]}" 3>&1 1>&2 2>&3 | tr -d '"')
 
-IFS=', ' read -r -a array <<< "$SAN"
-for element in "${array[@]}"
-do
-    SAN_ARRAY+=(--san "$element")
-done
+  [[ -z ${CERT_SERIAL_NUMBERS} ]] && x509_request
+  
+  MENU_ARRAY=("Renew" "Renew x509 Certificates." "ON")
+  MENU_ARRAY+=("Revoke" "Revoke x509 Certificates." "OFF")
+  MENU_ARRAY+=("Inspect" "Inspect x509 Certificates." "OFF")
+  CERT_MAINTENANCE=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Admin" --radiolist "Select Maintenance Type:" 16 48 6 "${MENU_ARRAY[@]}" 3>&1 1>&2 2>&3 | tr -d '"')
 
-step ca certificate $FQDN $StepCertDir/$FQDN.crt $StepCertDir/$FQDN.key \
-  --provisioner-password-file=$PROVISIONER_PASSWORD \
-  --not-after=$VALID_TO \
-  "${SAN_ARRAY[@]}" \
-  && step certificate inspect $StepCertDir/$FQDN.crt \
-  || echo "Failed to request certificate"; exit
+  case ${CERT_MAINTENANCE} in
+  ("Renew")
+    x509_renew "${CERT_SERIAL_NUMBERS[@]}"
+    ;;
+  ("Revoke")
+    x509_revoke "${CERT_SERIAL_NUMBERS[@]}"
+    ;;
+  ("Inspect")
+    x509_inspect "${CERT_SERIAL_NUMBERS[@]}"
+    ;;
+  *)
+    die "Unsupported CERT_MAINTENANCE Option!"
+    ;;
+  esac
+  ;;
+("ssh")
+  CERT_TYPE_OPTION="Maintain ssh Certificates - To be implemented in future"
+  #ssh_list
+  #echo "$CERT_LIST"
+  die "$CERT_TYPE_OPTION"
+  ;;
+*)
+  die "Unsupported CERT_TYPE Option!"
+  ;;
+esac
 EOF
-chmod 700 $StepRequest
-
-cat <<'EOF' >$StepRevoke
-#!/usr/bin/env bash
-#
-# step ca revoke <serialnumber>
-#
-SERIAL_NUMBER=$1
-step ca revoke ${SERIAL_NUMBER} || echo "Failed to revoke certificate"; exit
-EOF
-chmod 700 $StepRequest
-chmod 700 $StepRevoke
-msg_ok "Installed step-ca helper scripts"
+chmod 700 $Step-CA-Admin
+msg_ok "Installed step-ca Admin script"
 
 motd_ssh
 customize
