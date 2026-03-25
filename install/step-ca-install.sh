@@ -173,9 +173,12 @@ function whiptail_menu() {
 }
 
 function x509_list() {
+  CERT_LIST=""
   cp --recursive --force "$(step path)/db/"* "$STEPHOME/db-copy/"
   cp --recursive --force "$(step path)/certs/"* "$STEPHOME/certs/ca/"
-  CERT_LIST=$(step-badger x509Certs "${STEPHOME}/db-copy" 2>/dev/null)
+  if [[ $(step-badger x509Certs "${STEPHOME}/db-copy") ]]; then
+    CERT_LIST=$(step-badger x509Certs ${STEPHOME}/db-copy 2>/dev/null)
+  fi
 }
 
 function ssh_list() {
