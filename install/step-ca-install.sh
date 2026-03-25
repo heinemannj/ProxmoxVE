@@ -130,8 +130,9 @@ msg_ok "Started step-ca as a Daemon"
 fetch_and_deploy_gh_release "step-badger" "lukasz-lobocki/step-badger" "prebuild" "latest" "/opt/step-badger" "step-badger_Linux_x86_64.tar.gz"
 ln -s /opt/step-badger/step-badger /usr/local/bin/step-badger
 
-msg_info "Install step-ca Admin script"
 Step-CA-Admin="$STEPHOME/step-ca-admin.sh"
+
+msg_info "Install step-ca Admin script"
 cat <<'EOF' >$Step-CA-Admin
 #!/usr/bin/env bash
 
