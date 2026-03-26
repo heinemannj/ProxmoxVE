@@ -148,6 +148,7 @@ function header_info() {
  (__  ) /_/  __/ /_/ /_____/ /__/ /_/ /  / ___ / /_/ / / / / / / / / / /
 /____/\__/\___/ .___/      \___/\__,_/  /_/  |_\__,_/_/ /_/ /_/_/_/ /_/ 
              /_/                                                            
+
 EOF
 }
 
@@ -251,16 +252,16 @@ function x509_request() {
   SAN=""
 
   while true; do
-    FQDN=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'FQDN (e.g. MyLXC.example.com)' 10 50 "$FQDN" 3>&1 1>&2 2>&3)
+    FQDN=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox '\nFQDN (e.g. MyLXC.example.com)' 10 50 "$FQDN" 3>&1 1>&2 2>&3)
     IP=$(dig +short "$FQDN")
     if [[ -z "$IP" ]]; then
       die "Resolution failed for $FQDN!"
     fi
     HOST=$(echo "$FQDN" | awk -F'.' '{print $1}')
-    IP=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'IP Address (e.g. x.x.x.x)' 10 50 "$IP" 3>&1 1>&2 2>&3)
-    HOST=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'Hostname (e.g. MyHostName)' 10 50 "$HOST" 3>&1 1>&2 2>&3)
-    SAN=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'Subject Alternative Name(s) (SAN) (e.g. myapp-1.example.com, myapp-2.example.com)' 10 50 "$SAN" 3>&1 1>&2 2>&3)
-    VALID_TO=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'Validity (e.g. 2034-01-31T00:00:00Z)' 10 50 "2034-01-31T00:00:00Z" 3>&1 1>&2 2>&3)
+    IP=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox '\nIP Address (e.g. x.x.x.x)' 10 50 "$IP" 3>&1 1>&2 2>&3)
+    HOST=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox '\nHostname (e.g. MyHostName)' 10 50 "$HOST" 3>&1 1>&2 2>&3)
+    SAN=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox '\nSubject Alternative Name(s) (SAN) (e.g. myapp-1.example.com, myapp-2.example.com)' 10 50 "$SAN" 3>&1 1>&2 2>&3)
+    VALID_TO=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox '\nValidity (e.g. 2034-01-31T00:00:00Z)' 10 50 "2034-01-31T00:00:00Z" 3>&1 1>&2 2>&3)
 
     # shellcheck disable=SC2034
     if whiptail_yesno=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --yesno "Continue with below?\n
@@ -344,7 +345,7 @@ whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Admin" --yesno
 
 MENU_ARRAY=("x509" "Maintain x509 Certificates." "ON")
 MENU_ARRAY+=("ssh" "Maintain ssh Certificates." "OFF")
-CERT_TYPE=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Admin" --radiolist "Select Certificate Type:" 16 48 6 "${MENU_ARRAY[@]}" 3>&1 1>&2 2>&3 | tr -d '"')
+CERT_TYPE=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Admin" --radiolist "\nSelect Certificate Type:" 16 48 6 "${MENU_ARRAY[@]}" 3>&1 1>&2 2>&3 | tr -d '"')
 
 [[ -z ${CERT_TYPE} ]] && die "No Certificate Type selected!"
 
@@ -366,7 +367,7 @@ case ${CERT_TYPE} in
   MENU_ARRAY=("Renew" "Renew x509 Certificates." "ON")
   MENU_ARRAY+=("Revoke" "Revoke x509 Certificates." "OFF")
   MENU_ARRAY+=("Inspect" "Inspect x509 Certificates." "OFF")
-  CERT_MAINTENANCE=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Admin" --radiolist "Select Maintenance Type:" 16 48 6 "${MENU_ARRAY[@]}" 3>&1 1>&2 2>&3 | tr -d '"')
+  CERT_MAINTENANCE=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Admin" --radiolist "\nSelect Maintenance Type:" 16 48 6 "${MENU_ARRAY[@]}" 3>&1 1>&2 2>&3 | tr -d '"')
 
   case ${CERT_MAINTENANCE} in
   ("Renew")
