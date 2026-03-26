@@ -46,7 +46,7 @@ function msg_error() { echo -e "${CROSS} ${RD}${1}${CL}"; }
 function msg_warn() { echo -e "⚠️  ${YW}${1}${CL}"; }
 
 function install_helper_scripts() {
-  msg_info "Install step helper scripts"
+  mkdir -p "$CONFIG_PATH"
   $STD cat <<'EOF' >$StepCSR
 #!/usr/bin/env bash
 #
@@ -145,7 +145,6 @@ update-ca-certificates
 EOF
   chmod 700 $StepCSR
   chmod 700 $StepBootstrap
-  msg_ok "Installed step helper scripts"
 }
 
 function detect_os() {
@@ -228,25 +227,19 @@ function install() {
   fi 
   msg_ok "Installed $APP"
 
-  msg_info "Installing helper scripts"
+  msg_info "Installing step helper scripts"
   install_helper_scripts
-  msg_ok "Installed helper scripts"
+  msg_ok "Installed step helper scripts"
 
   msg_info "Installing root CA certificate"
   $STD $StepBootstrap
-  msg_ok "Installed root CA certificate"
-  
-  #msg_info "Testing root CA certificate"
   #$STD step certificate inspect https://"$CA_FQDN"
-  #msg_ok "Tested root CA certificate"
+  msg_ok "Installed root CA certificate"
 
   msg_info "Requesting system certificate"
   $STD $StepCSR
-  msg_ok "Requested system certificate"
-
-  #msg_info "Testing system certificate"
   #$STD step certificate inspect $StepCertDir/certs/"$FQDN".crt
-  #msg_ok "Tested system certificate"
+  msg_ok "Requested system certificate"
 
   msg_info "Starting step as a Daemon"
   cat <<EOF >/etc/systemd/system/step.service
