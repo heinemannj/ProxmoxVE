@@ -350,12 +350,10 @@ CERT_TYPE=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Ad
 
 case ${CERT_TYPE} in
 ("x509")
-  CA="test"
-
   x509_list
   whiptail_menu "$(echo "$CERT_LIST" | awk 'NR>1 {print $1 " " $2 "|" $3 "|" $4 "|" $5}')"
   MENU_ARRAY+=("" "Create a new Certificate" "OFF")
-  CERT_SERIAL_NUMBERS=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificates on ${CA}" --checklist "\nSelect for Maintenance:\n" 16 $((MSG_MAX_LENGTH + 55)) 6 "${MENU_ARRAY[@]}" 3>&1 1>&2 2>&3 | tr -d '"')
+  CERT_SERIAL_NUMBERS=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificates on $(hostname)" --checklist "\nSelect Certificate(s) to maintain:\n" 16 $((MSG_MAX_LENGTH + 55)) 6 "${MENU_ARRAY[@]}" 3>&1 1>&2 2>&3 | tr -d '"')
 
   [[ -z ${CERT_SERIAL_NUMBERS} ]] && x509_request
   
@@ -380,10 +378,9 @@ case ${CERT_TYPE} in
   esac
   ;;
 ("ssh")
-  CERT_TYPE_OPTION="Maintain ssh Certificates - To be implemented in future"
   #ssh_list
   #echo "$CERT_LIST"
-  die "$CERT_TYPE_OPTION"
+  die "Maintain ssh Certificates - To be implemented in future"
   ;;
 *)
   die "Unsupported CERT_TYPE Option!"
