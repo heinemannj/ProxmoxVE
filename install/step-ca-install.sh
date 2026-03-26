@@ -148,7 +148,6 @@ function header_info() {
  (__  ) /_/  __/ /_/ /_____/ /__/ /_/ /  / ___ / /_/ / / / / / / / / / /
 /____/\__/\___/ .___/      \___/\__,_/  /_/  |_\__,_/_/ /_/ /_/_/_/ /_/ 
              /_/                                                            
-
 EOF
 }
 
@@ -332,9 +331,9 @@ declare -f init_tool_telemetry &>/dev/null && init_tool_telemetry "step-ca-admin
 header_info
 
 mkdir --parents "$STEPHOME/db-copy/"
-mkdir --parents "$STEPHOME/certs/ca/"
-mkdir --parents "$STEPHOME/certs/ssh/"
-mkdir --parents "$STEPHOME/certs/x509/"
+mkdir --parents "$STEPHOME/certs/ca/_archive/"
+mkdir --parents "$STEPHOME/certs/ssh/_archive/"
+mkdir --parents "$STEPHOME/certs/x509/_archive/"
 
 PROVISIONER=$(jq '.authority.provisioners.[] | select(.type=="JWK") | .name' "$(step path)"/config/ca.json)
 PROVISIONER="${PROVISIONER#\"}"
