@@ -351,7 +351,13 @@ CERT_TYPE=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Ad
 case ${CERT_TYPE} in
 ("x509")
   x509_list
-  whiptail_menu "$(echo "$CERT_LIST" | awk 'NR>1 {print $1 " " $2 "|" $3 "|" $4 "|" $5}')"
+  CERT_LIST=$(echo "$CERT_LIST" | awk 'NR>1 {print $1 " " $2 "|" $3 "|" $4 "|" $5}')
+  if [[ $CERT_LIST ]]; then
+    whiptail_menu "$CERT_LIST"
+  else
+    MENU_ARRAY=()
+    MSG_MAX_LENGTH=2
+  fi
   MENU_ARRAY+=("" "Create a new Certificate" "OFF")
   CERT_SERIAL_NUMBERS=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificates on $(hostname)" --checklist "\nSelect Certificate(s) to maintain:\n" 16 $((MSG_MAX_LENGTH + 55)) 6 "${MENU_ARRAY[@]}" 3>&1 1>&2 2>&3 | tr -d '"')
 
@@ -378,8 +384,6 @@ case ${CERT_TYPE} in
   esac
   ;;
 ("ssh")
-  #ssh_list
-  #echo "$CERT_LIST"
   die "Maintain ssh Certificates - To be implemented in future"
   ;;
 *)
