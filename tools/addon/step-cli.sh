@@ -272,7 +272,7 @@ OPTIONS=(Install "Install $APP"
   Revoke "Revoke Certificate"
   Inspect "Inspect Certificate")
 
-CHOICE=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "$APP" --menu "\nSelect an option:" 20 58 8 \
+CHOICE=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "$APP" --menu "\nSelect an option:" 17 58 8 \
   "${OPTIONS[@]}" 3>&1 1>&2 2>&3 || true)
 
 case "$CHOICE" in
