@@ -48,6 +48,16 @@ function die() {
   exit 1
 }
 
+function renew() {
+  local FQDN=$1
+  step certificate inspect $StepCertDir/localcerts/"$FQDN".crt  || die "Certificate renew failed!"
+}
+
+function revoke() {
+  local FQDN=$1
+  step certificate inspect $StepCertDir/localcerts/"$FQDN".crt  || die "Certificate revoke failed!"
+}
+
 function inspect() {
   local FQDN=$1
   step certificate inspect $StepCertDir/localcerts/"$FQDN".crt  || die "Certificate inspect failed!"
@@ -258,6 +268,8 @@ OPTIONS=(Install "Install $APP"
   Uninstall "Uninstall $APP"
   Bootstrap "Install root CA Certificate"
   Request "Certificate Signing Request (CSR)"
+  Renew "Renew Certificate"
+  Revoke "Revoke Certificate"
   Inspect "Inspect Certificate")
 
 CHOICE=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "$APP" --menu "\nSelect an option:" 12 58 6 \
@@ -269,6 +281,8 @@ case "$CHOICE" in
   Uninstall) uninstall ;;
   Bootstrap) bootstrap ;;
   Request) request ;;
+  Renew) renew ;;
+  Revoke) revoke ;;
   Inspect) inspect ;;
   *) exit 0 ;;
 esac
