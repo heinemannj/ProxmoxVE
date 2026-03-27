@@ -45,6 +45,11 @@ function msg_ok() { echo -e "${CM} ${GN}${1}${CL}"; }
 function msg_error() { echo -e "${CROSS} ${RD}${1}${CL}"; }
 function msg_warn() { echo -e "⚠️  ${YW}${1}${CL}"; }
 
+function die() {
+  echo -e "\n${BL}[ERROR]${GN} ${RD}${1}${CL}\n"
+  exit 1
+}
+
 function install_helper_scripts() {
   mkdir -p "$CONFIG_PATH"
   $STD cat <<'EOF' >$StepCSR
@@ -116,43 +121,7 @@ step ca certificate "$FQDN" \
 
 step certificate inspect $StepCertDir/certs/"$FQDN".crt  || die "Certificate inspect failed!"
 EOF
-
-  $STD cat <<'EOF' >$StepBootstrap
-#!/usr/bin/env bash
-#
-
-function die() {
-  echo -e "\n${BL}[ERROR]${GN} ${RD}${1}${CL}\n"
-  exit 1
-}
-
-echo "Installing root CA certificate"
-echo
-
-while true;
-do
-
-CA_FQDN=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Bootstrap Options" --inputbox '\nCA FQDN (e.g. step-ca.example.com)' 10 50 "$CA_FQDN" 3>&1 1>&2 2>&3)
-IP=$(dig +short "$CA_FQDN")
-if [[ -z "$IP" ]]; then
-    die "Resolution failed for $CA_FQDN!"
-fi
-FINGERPRINT=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Bootstrap Options" --inputbox '\nCA Fingerprint' 10 50 "$FINGERPRINT" 3>&1 1>&2 2>&3)
-
-if whiptail_yesno=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Bootstrap Options" --yesno "Continue with below?\n
-CA FQDN: $CA_FQDN
-CA Fingerprint: $FINGERPRINT" --no-button "Change" --yes-button "Continue" 15 70 3>&1 1>&2 2>&3); then
-break
-fi
-
-done
-
-step ca bootstrap -f --ca-url https://"$CA_FQDN" --install --fingerprint "$FINGERPRINT"  || die "CA Bootstrap failed!"
-step certificate install --all ~/.step/certs/root_ca.crt || die "Installing root CA certificate failed!"
-update-ca-certificates  || die "Update of System CA Certificates failed!"
-EOF
   chmod 700 $StepCSR
-  chmod 700 $StepBootstrap
 }
 
 function detect_os() {
@@ -235,7 +204,7 @@ function install() {
 
   msg_info "Initializing step-cli"
   install_helper_scripts
-  $STD $StepBootstrap || die "Main - CA Bootstrap failed!"
+  $STD bootstrap || die "Main - CA Bootstrap failed!"
   #$STD step certificate inspect https://"$CA_FQDN" || die "Main - Certificate Inspect failed!"
   msg_ok "Initialized step-cli"
 
@@ -266,13 +235,41 @@ EOF
   msg_ok "Started step as a Daemon"
 }
 
+function bootstrap() {
+  msg_info "Installing root CA certificate"
+
+  while true;
+  do
+
+  CA_FQDN=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Bootstrap Options" --inputbox '\nCA FQDN (e.g. step-ca.example.com)' 10 50 "$CA_FQDN" 3>&1 1>&2 2>&3)
+  IP=$(dig +short "$CA_FQDN")
+  if [[ -z "$IP" ]]; then
+    die "Resolution failed for $CA_FQDN!"
+  fi
+  FINGERPRINT=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Bootstrap Options" --inputbox '\nCA Fingerprint' 10 50 "$FINGERPRINT" 3>&1 1>&2 2>&3)
+
+  if whiptail_yesno=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Bootstrap Options" --yesno "Continue with below?\n
+    CA FQDN: $CA_FQDN
+    CA Fingerprint: $FINGERPRINT" --no-button "Change" --yes-button "Continue" 15 70 3>&1 1>&2 2>&3); then
+    break
+  fi
+
+  done
+
+  step ca bootstrap -f --ca-url https://"$CA_FQDN" --install --fingerprint "$FINGERPRINT"  || die "CA Bootstrap failed!"
+  step certificate install --all ~/.step/certs/root_ca.crt || die "Installing root CA certificate failed!"
+  update-ca-certificates  || die "Update of System CA Certificates failed!"
+  msg_ok "Installed root CA certificate"
+}
+
 header_info
 detect_os
 
 # options menu
 OPTIONS=(Install "Install $APP"
   Update "Update $APP"
-  Uninstall "Uninstall $APP")
+  Uninstall "Uninstall $APP"
+  Bootstrap "Installing root CA certificate")
 
 CHOICE=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "$APP" --menu "\nSelect an option:" 12 58 3 \
   "${OPTIONS[@]}" 3>&1 1>&2 2>&3 || true)
@@ -281,5 +278,6 @@ case "$CHOICE" in
   Install) install ;;
   Update) update ;;
   Uninstall) uninstall ;;
+  Bootstrap) bootstrap ;;
   *) exit 0 ;;
 esac
