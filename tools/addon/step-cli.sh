@@ -103,12 +103,12 @@ do
     SAN_ARRAY+=(--san "$element")
 done
 
-step ca certificate -f "$FQDN" \
+step ca certificate "$FQDN" \
   "$StepCertDir"/certs/"$FQDN".crt \
   "$StepCertDir"/private/"$FQDN".key \
   --provisioner="$AcmeProvisioner" \
   --not-after="$VALID_TO" \
-  "${SAN_ARRAY[@]}"
+  "${SAN_ARRAY[@]} -f"
 
 step certificate inspect $StepCertDir/certs/$FQDN.crt
 EOF
