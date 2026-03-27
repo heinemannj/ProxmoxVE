@@ -216,12 +216,12 @@ function update() {
 
 function install() {
   msg_info "Installing dependencies"
-  $PKG_UPDATE
-  $PKG_INSTALL curl whiptail dnsutils jq
+  $STD $PKG_UPDATE
+  $STD $PKG_INSTALL curl whiptail dnsutils jq
   msg_ok "Installed dependencies"
 
   msg_info "Installing $APP"
-  $PKG_INSTALL $APP
+  $STD $PKG_INSTALL $APP
   if [[ ! -e $BINARY_PATH ]]; then
     ln -s /usr/bin/step-cli $BINARY_PATH
   fi 
