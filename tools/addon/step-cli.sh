@@ -14,8 +14,6 @@ APP="step-cli"
 BINARY_PATH="/usr/bin/step"
 CONFIG_PATH="/root/.step"
 StepCertDir="/etc/ssl"
-StepCSR="$CONFIG_PATH/step-certificate-signing-request.sh"
-StepBootstrap="$CONFIG_PATH/step-ca-bootstrap.sh"
 
 function header_info {
   clear
@@ -52,7 +50,7 @@ function die() {
 
 function inspect() {
   local FQDN=$1
-  step certificate inspect $StepCertDir/certs/"$FQDN".crt  || die "Certificate inspect failed!"
+  step certificate inspect $StepCertDir/localcerts/"$FQDN".crt  || die "Certificate inspect failed!"
 }
 
 function bootstrap() {
@@ -126,7 +124,7 @@ function request() {
   done
 
   step ca certificate "$FQDN" \
-    "$StepCertDir"/certs/"$FQDN".crt \
+    "$StepCertDir"/localcerts/"$FQDN".crt \
     "$StepCertDir"/private/"$FQDN".key \
     --provisioner="$AcmeProvisioner" \
     --not-after="$VALID_TO" \
@@ -139,7 +137,7 @@ function request() {
   msg_info "Starting step as a Daemon"
   cat <<EOF >/etc/systemd/system/step.service
 [Unit]
-Description=Automated certificate management
+Description=Automated Certificate Management
 Documentation=https://smallstep.com/docs/step-cli/reference/ca/renew/
 After=network.target
 StartLimitIntervalSec=0
@@ -148,7 +146,7 @@ StartLimitIntervalSec=0
 Type=simple
 Restart=always
 RestartSec=1
-ExecStart=/usr/bin/step ca renew --daemon $StepCertDir/certs/$FQDN.crt $StepCertDir/private/$FQDN.key
+ExecStart=/usr/bin/step ca renew --daemon $StepCertDir/localcerts/$FQDN.crt $StepCertDir/private/$FQDN.key
 
 [Install]
 WantedBy=multi-user.target
@@ -244,6 +242,7 @@ function install() {
     ln -s /usr/bin/step-cli $BINARY_PATH
   fi
   mkdir -p "$CONFIG_PATH"
+  mkdir -p /etc/ssl/localcerts
   msg_ok "Installed $APP"
 
   $STD bootstrap || die "Main - CA Bootstrap failed!"
