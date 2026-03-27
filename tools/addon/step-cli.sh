@@ -202,7 +202,7 @@ function update() {
   $STD systemctl start step.service
   sleep 5
   systemctl status step.service
-  msg_ok "Updated successfully"
+  msg_ok "Updated $APP successfully"
 }
 
 function bootstrap() {
@@ -225,10 +225,10 @@ function bootstrap() {
     fi
   done
 
-  $STD step ca bootstrap -f --ca-url https://"$CA_FQDN" --install --fingerprint "$FINGERPRINT"  || die "CA Bootstrap failed!"
-  $STD step certificate install --all ~/.step/certs/root_ca.crt || die "Installing root CA certificate failed!"
+  $STD step ca bootstrap -f --ca-url https://"$CA_FQDN" --install --fingerprint "$FINGERPRINT"  || die "CA Bootstrapping failed!"
+  $STD step certificate install --all ~/.step/certs/root_ca.crt || die "Installation of root CA Certificate failed!"
   $STD update-ca-certificates  || die "Update of System CA Certificates failed!"
-  $STD step certificate inspect https://"$CA_FQDN" || die "Main - Certificate Inspect failed!"
+  $STD step certificate inspect https://"$CA_FQDN" || die "Inspection of root CA Certificate failed!"
   msg_ok "Installed root CA certificate"
 }
 
@@ -246,7 +246,7 @@ function install() {
   msg_ok "Installed $APP"
 
   $STD bootstrap || die "Main - CA Bootstrap failed!"
-  $STD request || die "Main - Requesting System Certificate failed!"
+  $STD request || die "Main - Request System Certificate failed!"
 }
 
 header_info
@@ -256,7 +256,7 @@ detect_os
 OPTIONS=(Install "Install $APP"
   Update "Update $APP"
   Uninstall "Uninstall $APP"
-  Bootstrap "Installing root CA certificate"
+  Bootstrap "Install root CA Certificate"
   Request "Certificate Signing Request (CSR)")
 
 CHOICE=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "$APP" --menu "\nSelect an option:" 12 58 5 \
