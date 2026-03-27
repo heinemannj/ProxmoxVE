@@ -50,11 +50,38 @@ function die() {
   exit 1
 }
 
+function inspect() {
+  local FQDN=$1
+  step certificate inspect $StepCertDir/certs/"$FQDN".crt  || die "Certificate inspect failed!"
+}
+
+function bootstrap() {
+  msg_info "Installing root CA certificate"
+  while true;
+  do
+    CA_FQDN=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Bootstrap Options" --inputbox '\nCA FQDN (e.g. step-ca.example.com)' 10 50 "$CA_FQDN" 3>&1 1>&2 2>&3)
+    IP=$(dig +short "$CA_FQDN")
+    if [[ -z "$IP" ]]; then
+      die "Resolution failed for $CA_FQDN!"
+    fi
+    FINGERPRINT=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Bootstrap Options" --inputbox '\nCA Fingerprint' 10 50 "$FINGERPRINT" 3>&1 1>&2 2>&3)
+
+    if whiptail_yesno=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Bootstrap Options" --yesno "Continue with below?\n
+      CA FQDN: $CA_FQDN
+      CA Fingerprint: $FINGERPRINT" --no-button "Change" --yes-button "Continue" 15 70 3>&1 1>&2 2>&3); then
+      break
+    fi
+  done
+
+  $STD step ca bootstrap -f --ca-url https://"$CA_FQDN" --install --fingerprint "$FINGERPRINT"  || die "CA Bootstrapping failed!"
+  $STD step certificate install --all ~/.step/certs/root_ca.crt || die "Installation of root CA Certificate failed!"
+  $STD update-ca-certificates  || die "Update of System CA Certificates failed!"
+  $STD step certificate inspect https://"$CA_FQDN" || die "Inspection of root CA Certificate failed!"
+  msg_ok "Installed root CA certificate"
+}
+
 function request() {
   msg_info "Requesting System Certificate"
-  mkdir -p "$CONFIG_PATH"
-  StepCertDir="/etc/ssl"
-
   VALID_TO="168h"
   FQDN=$(hostname -f)
   HOST=$(hostname)
@@ -106,7 +133,7 @@ function request() {
     -f \
     "${SAN_ARRAY[@]}" || die "Certificate Signing Request (CSR) failed!"
 
-  step certificate inspect $StepCertDir/certs/"$FQDN".crt  || die "Certificate inspect failed!"
+  inspect "$FQDN"
   msg_ok "Requested system certificate"
 
   msg_info "Starting step as a Daemon"
@@ -205,33 +232,6 @@ function update() {
   msg_ok "Updated $APP successfully"
 }
 
-function bootstrap() {
-  msg_info "Installing root CA certificate"
-  mkdir -p "$CONFIG_PATH"
-
-  while true;
-  do
-    CA_FQDN=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Bootstrap Options" --inputbox '\nCA FQDN (e.g. step-ca.example.com)' 10 50 "$CA_FQDN" 3>&1 1>&2 2>&3)
-    IP=$(dig +short "$CA_FQDN")
-    if [[ -z "$IP" ]]; then
-      die "Resolution failed for $CA_FQDN!"
-    fi
-    FINGERPRINT=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Bootstrap Options" --inputbox '\nCA Fingerprint' 10 50 "$FINGERPRINT" 3>&1 1>&2 2>&3)
-
-    if whiptail_yesno=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Bootstrap Options" --yesno "Continue with below?\n
-      CA FQDN: $CA_FQDN
-      CA Fingerprint: $FINGERPRINT" --no-button "Change" --yes-button "Continue" 15 70 3>&1 1>&2 2>&3); then
-      break
-    fi
-  done
-
-  $STD step ca bootstrap -f --ca-url https://"$CA_FQDN" --install --fingerprint "$FINGERPRINT"  || die "CA Bootstrapping failed!"
-  $STD step certificate install --all ~/.step/certs/root_ca.crt || die "Installation of root CA Certificate failed!"
-  $STD update-ca-certificates  || die "Update of System CA Certificates failed!"
-  $STD step certificate inspect https://"$CA_FQDN" || die "Inspection of root CA Certificate failed!"
-  msg_ok "Installed root CA certificate"
-}
-
 function install() {
   msg_info "Installing dependencies"
   $PKG_UPDATE
@@ -242,7 +242,8 @@ function install() {
   $PKG_INSTALL $APP
   if [[ ! -e $BINARY_PATH ]]; then
     ln -s /usr/bin/step-cli $BINARY_PATH
-  fi 
+  fi
+  mkdir -p "$CONFIG_PATH"
   msg_ok "Installed $APP"
 
   $STD bootstrap || die "Main - CA Bootstrap failed!"
@@ -257,7 +258,8 @@ OPTIONS=(Install "Install $APP"
   Update "Update $APP"
   Uninstall "Uninstall $APP"
   Bootstrap "Install root CA Certificate"
-  Request "Certificate Signing Request (CSR)")
+  Request "Certificate Signing Request (CSR)"
+  Inspect "Inspect Certificate")
 
 CHOICE=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "$APP" --menu "\nSelect an option:" 12 58 5 \
   "${OPTIONS[@]}" 3>&1 1>&2 2>&3 || true)
@@ -268,5 +270,6 @@ case "$CHOICE" in
   Uninstall) uninstall ;;
   Bootstrap) bootstrap ;;
   Request) request ;;
+  Inspect) inspect ;;
   *) exit 0 ;;
 esac
