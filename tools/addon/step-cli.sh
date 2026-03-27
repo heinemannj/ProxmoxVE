@@ -216,27 +216,24 @@ function update() {
 
 function install() {
   msg_info "Installing dependencies"
-  $STD $PKG_UPDATE
-  $STD $PKG_INSTALL curl whiptail dnsutils jq
+  $PKG_UPDATE
+  $PKG_INSTALL curl whiptail dnsutils jq
   msg_ok "Installed dependencies"
 
   msg_info "Installing $APP"
-  $STD $PKG_INSTALL $APP
+  $PKG_INSTALL $APP
   if [[ ! -e $BINARY_PATH ]]; then
     ln -s /usr/bin/step-cli $BINARY_PATH
   fi 
   msg_ok "Installed $APP"
 
-  msg_info "Installing step helper scripts"
+  msg_info "Initializing step-cli"
   install_helper_scripts
-  msg_ok "Installed step helper scripts"
-
-  msg_info "Installing root CA certificate"
   $STD $StepBootstrap
   $STD step certificate inspect https://"$CA_FQDN"
-  msg_ok "Installed root CA certificate"
+  msg_ok "Initialized step-cli"
 
-  msg_info "Requesting system certificate"
+  msg_info "Requesting System Certificate"
   #$STD $StepCSR
   #$STD step certificate inspect $StepCertDir/certs/"$FQDN".crt
   msg_ok "Requested system certificate"
