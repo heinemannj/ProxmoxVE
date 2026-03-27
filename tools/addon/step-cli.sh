@@ -50,78 +50,70 @@ function die() {
   exit 1
 }
 
-function install_helper_scripts() {
+function request() {
+  msg_info "Requesting System Certificate"
   mkdir -p "$CONFIG_PATH"
-  $STD cat <<'EOF' >$StepCSR
-#!/usr/bin/env bash
-#
 
-function die() {
-  echo -e "\n${BL}[ERROR]${GN} ${RD}${1}${CL}\n"
-  exit 1
-}
+  echo "Requesting system certificate"
+  echo
 
-echo "Requesting system certificate"
-echo
+  StepCertDir="/etc/ssl"
 
-StepCertDir="/etc/ssl"
-
-VALID_TO="168h"
-FQDN=$(hostname -f)
-HOST=$(hostname)
-DomainName=$(hostname -d)
-IP=$(dig +short "$FQDN")
-if [[ -z "$IP" ]]; then
+  VALID_TO="168h"
+  FQDN=$(hostname -f)
+  HOST=$(hostname)
+  DomainName=$(hostname -d)
+  IP=$(dig +short "$FQDN")
+  if [[ -z "$IP" ]]; then
     die "Resolution failed for $FQDN!"
-fi
-AcmeProvisioner="acme@$DomainName"
+  fi
+  AcmeProvisioner="acme@$DomainName"
 
-while true;
-do
+  while true;
+  do
 
-if whiptail_yesno=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --yesno "Continue with below?\n
-FQDN: $FQDN
-Hostname: $HOST
-IP Address: $IP
-Subject Alternative Name(s) (SANs): $SAN
-Validity: $VALID_TO
-ACME Provisioner: $AcmeProvisioner" --no-button "Change" --yes-button "Continue" 15 70 3>&1 1>&2 2>&3); then
-break
-fi
+    if whiptail_yesno=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --yesno "Continue with below?\n
+      FQDN: $FQDN
+      Hostname: $HOST
+      IP Address: $IP
+      Subject Alternative Name(s) (SANs): $SAN
+      Validity: $VALID_TO
+      ACME Provisioner: $AcmeProvisioner" --no-button "Change" --yes-button "Continue" 15 70 3>&1 1>&2 2>&3); then
+      break
+    fi
 
-FQDN=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'FQDN (e.g. MyLXC.example.com)' 10 50 "$FQDN" 3>&1 1>&2 2>&3)
-IP=$(dig +short "$FQDN")
-if [[ -z "$IP" ]]; then
-    die "Resolution failed for $FQDN!"
-fi
-HOST=$(echo "$FQDN" | awk -F'.' '{print $1}')
-IP=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'IP Address (e.g. x.x.x.x)' 10 50 "$IP" 3>&1 1>&2 2>&3)
-HOST=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'Hostname (e.g. MyHostName)' 10 50 "$HOST" 3>&1 1>&2 2>&3)
-SAN=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'Subject Alternative Name(s) (SAN) (e.g. MyApp.example.com)' 10 50 "$SAN" 3>&1 1>&2 2>&3)
-VALID_TO=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'Validity (e.g. 168h)' 10 50 "$VALID_TO" 3>&1 1>&2 2>&3)
-AcmeProvisioner=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'ACME Provisioner (e.g. acme@example.com)' 10 50 "$AcmeProvisioner" 3>&1 1>&2 2>&3)
+    FQDN=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'FQDN (e.g. MyLXC.example.com)' 10 50 "$FQDN" 3>&1 1>&2 2>&3)
+    IP=$(dig +short "$FQDN")
+    if [[ -z "$IP" ]]; then
+      die "Resolution failed for $FQDN!"
+    fi
+    HOST=$(echo "$FQDN" | awk -F'.' '{print $1}')
+    IP=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'IP Address (e.g. x.x.x.x)' 10 50 "$IP" 3>&1 1>&2 2>&3)
+    HOST=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'Hostname (e.g. MyHostName)' 10 50 "$HOST" 3>&1 1>&2 2>&3)
+    SAN=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'Subject Alternative Name(s) (SAN) (e.g. MyApp.example.com)' 10 50 "$SAN" 3>&1 1>&2 2>&3)
+    VALID_TO=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'Validity (e.g. 168h)' 10 50 "$VALID_TO" 3>&1 1>&2 2>&3)
+    AcmeProvisioner=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'ACME Provisioner (e.g. acme@example.com)' 10 50 "$AcmeProvisioner" 3>&1 1>&2 2>&3)
 
-done
+  done
 
-SAN="$FQDN, $HOST, $IP, $SAN"
+  SAN="$FQDN, $HOST, $IP, $SAN"
 
-IFS=', ' read -r -a array <<< "$SAN"
-for element in "${array[@]}"
-do
+  IFS=', ' read -r -a array <<< "$SAN"
+  for element in "${array[@]}"
+  do
     SAN_ARRAY+=(--san "$element")
-done
+  done
 
-step ca certificate "$FQDN" \
-  "$StepCertDir"/certs/"$FQDN".crt \
-  "$StepCertDir"/private/"$FQDN".key \
-  --provisioner="$AcmeProvisioner" \
-  --not-after="$VALID_TO" \
-  -f \
-  "${SAN_ARRAY[@]}" || die "Certificate Signing Request (CSR) failed!"
+  step ca certificate "$FQDN" \
+    "$StepCertDir"/certs/"$FQDN".crt \
+    "$StepCertDir"/private/"$FQDN".key \
+    --provisioner="$AcmeProvisioner" \
+    --not-after="$VALID_TO" \
+    -f \
+    "${SAN_ARRAY[@]}" || die "Certificate Signing Request (CSR) failed!"
 
-step certificate inspect $StepCertDir/certs/"$FQDN".crt  || die "Certificate inspect failed!"
-EOF
-  chmod 700 $StepCSR
+  step certificate inspect $StepCertDir/certs/"$FQDN".crt  || die "Certificate inspect failed!"
+  msg_ok "Requested system certificate"
 }
 
 function detect_os() {
@@ -191,6 +183,7 @@ function update() {
 
 function bootstrap() {
   msg_info "Installing root CA certificate"
+  mkdir -p "$CONFIG_PATH"
 
   while true;
   do
@@ -232,14 +225,8 @@ function install() {
   fi 
   msg_ok "Installed $APP"
 
-  msg_info "Initializing $APP"
-  install_helper_scripts
   $STD bootstrap || die "Main - CA Bootstrap failed!"
-  msg_ok "Initialized  $APP"
-
-  msg_info "Requesting System Certificate"
-  $STD $StepCSR  || die "Main - Requesting System Certificate failed!"
-  msg_ok "Requested system certificate"
+  $STD request || die "Main - Requesting System Certificate failed!"
 
   msg_info "Starting step as a Daemon"
   cat <<EOF >/etc/systemd/system/step.service
@@ -271,7 +258,8 @@ detect_os
 OPTIONS=(Install "Install $APP"
   Update "Update $APP"
   Uninstall "Uninstall $APP"
-  Bootstrap "Installing root CA certificate")
+  Bootstrap "Installing root CA certificate"
+  Request "Certificate Signing Request (CSR)")
 
 CHOICE=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "$APP" --menu "\nSelect an option:" 12 58 5 \
   "${OPTIONS[@]}" 3>&1 1>&2 2>&3 || true)
@@ -281,5 +269,6 @@ case "$CHOICE" in
   Update) update ;;
   Uninstall) uninstall ;;
   Bootstrap) bootstrap ;;
+  Request) request ;;
   *) exit 0 ;;
 esac
