@@ -82,17 +82,17 @@ function request() {
       break
     fi
 
-    FQDN=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'FQDN (e.g. MyLXC.example.com)' 10 50 "$FQDN" 3>&1 1>&2 2>&3)
+    FQDN=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox '\nFQDN (e.g. MyLXC.example.com)' 10 50 "$FQDN" 3>&1 1>&2 2>&3)
     IP=$(dig +short "$FQDN")
     if [[ -z "$IP" ]]; then
       die "Resolution failed for $FQDN!"
     fi
     HOST=$(echo "$FQDN" | awk -F'.' '{print $1}')
-    IP=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'IP Address (e.g. x.x.x.x)' 10 50 "$IP" 3>&1 1>&2 2>&3)
-    HOST=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'Hostname (e.g. MyHostName)' 10 50 "$HOST" 3>&1 1>&2 2>&3)
-    SAN=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'Subject Alternative Name(s) (SAN) (e.g. MyApp.example.com)' 10 50 "$SAN" 3>&1 1>&2 2>&3)
-    VALID_TO=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'Validity (e.g. 168h)' 10 50 "$VALID_TO" 3>&1 1>&2 2>&3)
-    AcmeProvisioner=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'ACME Provisioner (e.g. acme@example.com)' 10 50 "$AcmeProvisioner" 3>&1 1>&2 2>&3)
+    IP=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox '\nIP Address (e.g. x.x.x.x)' 10 50 "$IP" 3>&1 1>&2 2>&3)
+    HOST=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox '\nHostname (e.g. MyHostName)' 10 50 "$HOST" 3>&1 1>&2 2>&3)
+    SAN=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox '\nSubject Alternative Name(s) (SAN) (e.g. MyApp.example.com)' 10 50 "$SAN" 3>&1 1>&2 2>&3)
+    VALID_TO=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox '\nValidity (e.g. 168h)' 10 50 "$VALID_TO" 3>&1 1>&2 2>&3)
+    AcmeProvisioner=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox '\nACME Provisioner (e.g. acme@example.com)' 10 50 "$AcmeProvisioner" 3>&1 1>&2 2>&3)
 
   done
 
