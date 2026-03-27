@@ -53,10 +53,6 @@ function die() {
 function request() {
   msg_info "Requesting System Certificate"
   mkdir -p "$CONFIG_PATH"
-
-  echo "Requesting system certificate"
-  echo
-
   StepCertDir="/etc/ssl"
 
   VALID_TO="168h"
@@ -71,7 +67,6 @@ function request() {
 
   while true;
   do
-
     if whiptail_yesno=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --yesno "Continue with below?\n
       FQDN: $FQDN
       Hostname: $HOST
@@ -93,7 +88,6 @@ function request() {
     SAN=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox '\nSubject Alternative Name(s) (SAN) (e.g. MyApp.example.com)' 10 50 "$SAN" 3>&1 1>&2 2>&3)
     VALID_TO=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox '\nValidity (e.g. 168h)' 10 50 "$VALID_TO" 3>&1 1>&2 2>&3)
     AcmeProvisioner=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox '\nACME Provisioner (e.g. acme@example.com)' 10 50 "$AcmeProvisioner" 3>&1 1>&2 2>&3)
-
   done
 
   SAN="$FQDN, $HOST, $IP, $SAN"
@@ -228,7 +222,7 @@ function bootstrap() {
   step certificate install --all ~/.step/certs/root_ca.crt || die "Installing root CA certificate failed!"
   update-ca-certificates  || die "Update of System CA Certificates failed!"
   
-  #$STD step certificate inspect https://"$CA_FQDN" || die "Main - Certificate Inspect failed!"
+  $STD step certificate inspect https://"$CA_FQDN" || die "Main - Certificate Inspect failed!"
   
   msg_ok "Installed root CA certificate"
 }
