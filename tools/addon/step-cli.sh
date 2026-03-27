@@ -232,8 +232,8 @@ function install() {
   msg_ok "Installed step helper scripts"
 
   msg_info "Installing root CA certificate"
-  #$STD $StepBootstrap
-  #$STD step certificate inspect https://"$CA_FQDN"
+  $STD $StepBootstrap
+  $STD step certificate inspect https://"$CA_FQDN"
   msg_ok "Installed root CA certificate"
 
   msg_info "Requesting system certificate"
