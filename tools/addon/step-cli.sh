@@ -121,6 +121,11 @@ EOF
 #!/usr/bin/env bash
 #
 
+function die() {
+  echo -e "\n${BL}[ERROR]${GN} ${RD}${1}${CL}\n"
+  exit 1
+}
+
 echo "Installing root CA certificate"
 echo
 
