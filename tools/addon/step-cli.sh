@@ -181,10 +181,13 @@ function detect_os() {
 
 function uninstall() {
   msg_info "Uninstalling $APP"
+  systemctl stop step.service
+  systemctl disable step.service
   $PKG_UNINSTALL $APP
   $PKG_AUTOREMOVE
   rm -rf $CONFIG_PATH
   rm -f "/usr/local/bin/update_${APP,,}"
+  rm -f /etc/systemd/system/step.service
   msg_ok "Uninstalled $APP"
 }
 
@@ -193,8 +196,12 @@ function update() {
     die "$APP is not installed"
   fi
   msg_info "Updating $APP"
-    $PKG_UPDATE
-    $PKG_UPGRADE $APP
+  $STD systemctl stop step.service
+  $PKG_UPDATE
+  $PKG_UPGRADE $APP
+  $STD systemctl start step.service
+  sleep 5
+  systemctl status step.service
   msg_ok "Updated successfully"
 }
 
