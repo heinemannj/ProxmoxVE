@@ -260,8 +260,9 @@ ExecStart=/usr/bin/step ca renew --daemon $StepCertDir/certs/$FQDN.crt $StepCert
 [Install]
 WantedBy=multi-user.target
 EOF
-  #$STD systemctl enable -q --now step.service || die "Starting of step.service failed!"
-  #systemctl status step.service
+  $STD systemctl daemon-reload
+  $STD systemctl enable -q --now step.service
+  systemctl status step.service
   msg_ok "Started step as a Daemon"
 }
 
