@@ -231,7 +231,7 @@ function install() {
   msg_info "Initializing step-cli"
   install_helper_scripts
   $STD $StepBootstrap || exit 1
-  $STD step certificate inspect https://"$CA_FQDN"  || exit 1
+  #$STD step certificate inspect https://"$CA_FQDN"  || exit 1
   msg_ok "Initialized step-cli"
 
   msg_info "Requesting System Certificate"
