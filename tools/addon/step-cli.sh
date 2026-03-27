@@ -210,20 +210,18 @@ function bootstrap() {
 
   while true;
   do
+    CA_FQDN=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Bootstrap Options" --inputbox '\nCA FQDN (e.g. step-ca.example.com)' 10 50 "$CA_FQDN" 3>&1 1>&2 2>&3)
+    IP=$(dig +short "$CA_FQDN")
+    if [[ -z "$IP" ]]; then
+      die "Resolution failed for $CA_FQDN!"
+    fi
+    FINGERPRINT=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Bootstrap Options" --inputbox '\nCA Fingerprint' 10 50 "$FINGERPRINT" 3>&1 1>&2 2>&3)
 
-  CA_FQDN=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Bootstrap Options" --inputbox '\nCA FQDN (e.g. step-ca.example.com)' 10 50 "$CA_FQDN" 3>&1 1>&2 2>&3)
-  IP=$(dig +short "$CA_FQDN")
-  if [[ -z "$IP" ]]; then
-    die "Resolution failed for $CA_FQDN!"
-  fi
-  FINGERPRINT=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Bootstrap Options" --inputbox '\nCA Fingerprint' 10 50 "$FINGERPRINT" 3>&1 1>&2 2>&3)
-
-  if whiptail_yesno=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Bootstrap Options" --yesno "Continue with below?\n
-    CA FQDN: $CA_FQDN
-    CA Fingerprint: $FINGERPRINT" --no-button "Change" --yes-button "Continue" 15 70 3>&1 1>&2 2>&3); then
-    break
-  fi
-
+    if whiptail_yesno=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Bootstrap Options" --yesno "Continue with below?\n
+      CA FQDN: $CA_FQDN
+      CA Fingerprint: $FINGERPRINT" --no-button "Change" --yes-button "Continue" 15 70 3>&1 1>&2 2>&3); then
+      break
+    fi
   done
 
   step ca bootstrap -f --ca-url https://"$CA_FQDN" --install --fingerprint "$FINGERPRINT"  || die "CA Bootstrap failed!"
