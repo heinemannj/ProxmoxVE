@@ -114,6 +114,29 @@ function request() {
 
   step certificate inspect $StepCertDir/certs/"$FQDN".crt  || die "Certificate inspect failed!"
   msg_ok "Requested system certificate"
+
+  msg_info "Starting step as a Daemon"
+  cat <<EOF >/etc/systemd/system/step.service
+[Unit]
+Description=Automated certificate management
+Documentation=https://smallstep.com/docs/step-cli/reference/ca/renew/
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+ExecStart=/usr/bin/step ca renew --daemon $StepCertDir/certs/$FQDN.crt $StepCertDir/private/$FQDN.key
+
+[Install]
+WantedBy=multi-user.target
+EOF
+  $STD systemctl daemon-reload
+  $STD systemctl enable -q --now step.service
+  sleep 5
+  systemctl status step.service
+  msg_ok "Started step as a Daemon"
 }
 
 function detect_os() {
@@ -227,28 +250,6 @@ function install() {
 
   $STD bootstrap || die "Main - CA Bootstrap failed!"
   $STD request || die "Main - Requesting System Certificate failed!"
-
-  msg_info "Starting step as a Daemon"
-  cat <<EOF >/etc/systemd/system/step.service
-[Unit]
-Description=Automated certificate management
-Documentation=https://smallstep.com/docs/step-cli/reference/ca/renew/
-After=network.target
-StartLimitIntervalSec=0
-
-[Service]
-Type=simple
-Restart=always
-RestartSec=1
-ExecStart=/usr/bin/step ca renew --daemon $StepCertDir/certs/$FQDN.crt $StepCertDir/private/$FQDN.key
-
-[Install]
-WantedBy=multi-user.target
-EOF
-  $STD systemctl daemon-reload
-  $STD systemctl enable -q --now step.service
-  systemctl status step.service
-  msg_ok "Started step as a Daemon"
 }
 
 header_info
