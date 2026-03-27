@@ -108,7 +108,7 @@ step ca certificate "$FQDN" \
   "$StepCertDir"/private/"$FQDN".key \
   --provisioner="$AcmeProvisioner" \
   --not-after="$VALID_TO" \
-  "${SAN_ARRAY[@]} -f"
+  "${SAN_ARRAY[@]}"
 
 step certificate inspect $StepCertDir/certs/$FQDN.crt
 EOF
