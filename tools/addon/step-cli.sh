@@ -63,7 +63,7 @@ DomainName=$(hostname -d)
 IP=$(dig +short "$FQDN")
 if [[ -z "$IP" ]]; then
     echo "Resolution failed for $FQDN"
-    exit
+    exit 1
 fi
 AcmeProvisioner="acme@$DomainName"
 
@@ -84,7 +84,7 @@ FQDN=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Sig
 IP=$(dig +short "$FQDN")
 if [[ -z "$IP" ]]; then
     echo "Resolution failed for $FQDN"
-    exit
+    exit 1
 fi
 HOST=$(echo "$FQDN" | awk -F'.' '{print $1}')
 IP=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'IP Address (e.g. x.x.x.x)' 10 50 "$IP" 3>&1 1>&2 2>&3)
@@ -109,9 +109,9 @@ step ca certificate "$FQDN" \
   --provisioner="$AcmeProvisioner" \
   --not-after="$VALID_TO" \
   -f \
-  "${SAN_ARRAY[@]}"
+  "${SAN_ARRAY[@]}" || exit 1
 
-step certificate inspect $StepCertDir/certs/"$FQDN".crt
+step certificate inspect $StepCertDir/certs/"$FQDN".crt  || exit 1
 EOF
 
   $STD cat <<'EOF' >$StepBootstrap
@@ -140,9 +140,9 @@ fi
 
 done
 
-step ca bootstrap -f --ca-url https://"$CA_FQDN" --install --fingerprint "$FINGERPRINT"
-step certificate install --all ~/.step/certs/root_ca.crt
-update-ca-certificates
+step ca bootstrap -f --ca-url https://"$CA_FQDN" --install --fingerprint "$FINGERPRINT"  || exit 1
+step certificate install --all ~/.step/certs/root_ca.crt || exit 1
+update-ca-certificates  || exit 1
 EOF
   chmod 700 $StepCSR
   chmod 700 $StepBootstrap
@@ -230,12 +230,12 @@ function install() {
 
   msg_info "Initializing step-cli"
   install_helper_scripts
-  $STD $StepBootstrap
-  $STD step certificate inspect https://"$CA_FQDN"
+  $STD $StepBootstrap || exit 1
+  $STD step certificate inspect https://"$CA_FQDN"  || exit 1
   msg_ok "Initialized step-cli"
 
   msg_info "Requesting System Certificate"
-  $STD $StepCSR
+  $STD $StepCSR  || exit 1
   msg_ok "Requested system certificate"
 
   msg_info "Starting step as a Daemon"
