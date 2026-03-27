@@ -218,10 +218,9 @@ function bootstrap() {
     fi
   done
 
-  step ca bootstrap -f --ca-url https://"$CA_FQDN" --install --fingerprint "$FINGERPRINT"  || die "CA Bootstrap failed!"
-  step certificate install --all ~/.step/certs/root_ca.crt || die "Installing root CA certificate failed!"
-  update-ca-certificates  || die "Update of System CA Certificates failed!"
-  echo -e "\nTest"
+  $STD step ca bootstrap -f --ca-url https://"$CA_FQDN" --install --fingerprint "$FINGERPRINT"  || die "CA Bootstrap failed!"
+  $STD step certificate install --all ~/.step/certs/root_ca.crt || die "Installing root CA certificate failed!"
+  $STD update-ca-certificates  || die "Update of System CA Certificates failed!"
   $STD step certificate inspect https://"$CA_FQDN" || die "Main - Certificate Inspect failed!"
   msg_ok "Installed root CA certificate"
 }
