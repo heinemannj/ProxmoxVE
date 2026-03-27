@@ -111,7 +111,7 @@ step ca certificate "$FQDN" \
   -f \
   "${SAN_ARRAY[@]}"
 
-step certificate inspect $StepCertDir/certs/$FQDN.crt
+step certificate inspect $StepCertDir/certs/"$FQDN".crt
 EOF
 
   $STD cat <<'EOF' >$StepBootstrap
@@ -235,8 +235,7 @@ function install() {
   msg_ok "Initialized step-cli"
 
   msg_info "Requesting System Certificate"
-  #$STD $StepCSR
-  #$STD step certificate inspect $StepCertDir/certs/"$FQDN".crt
+  $STD $StepCSR
   msg_ok "Requested system certificate"
 
   msg_info "Starting step as a Daemon"
