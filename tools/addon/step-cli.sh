@@ -139,7 +139,7 @@ fi
 
 done
 
-step ca bootstrap --ca-url https://"$CA_FQDN" --install --fingerprint "$FINGERPRINT"
+step ca bootstrap -f --ca-url https://"$CA_FQDN" --install --fingerprint "$FINGERPRINT"
 step certificate install --all ~/.step/certs/root_ca.crt
 update-ca-certificates
 EOF
