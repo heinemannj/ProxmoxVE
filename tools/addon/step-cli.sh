@@ -232,12 +232,12 @@ function install() {
   msg_ok "Installed step helper scripts"
 
   msg_info "Installing root CA certificate"
-  $STD $StepBootstrap
+  #$STD $StepBootstrap
   #$STD step certificate inspect https://"$CA_FQDN"
   msg_ok "Installed root CA certificate"
 
   msg_info "Requesting system certificate"
-  $STD $StepCSR
+  #$STD $StepCSR
   #$STD step certificate inspect $StepCertDir/certs/"$FQDN".crt
   msg_ok "Requested system certificate"
 
@@ -258,8 +258,8 @@ ExecStart=/usr/bin/step ca renew --daemon $StepCertDir/certs/$FQDN.crt $StepCert
 [Install]
 WantedBy=multi-user.target
 EOF
-  $STD systemctl enable -q --now step.service
-  systemctl status step.service
+  #$STD systemctl enable -q --now step.service
+  #systemctl status step.service
   msg_ok "Started step as a Daemon"
 }
 
