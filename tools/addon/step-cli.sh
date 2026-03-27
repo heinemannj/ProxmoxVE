@@ -273,7 +273,7 @@ OPTIONS=(Install "Install $APP"
   Uninstall "Uninstall $APP"
   Bootstrap "Installing root CA certificate")
 
-CHOICE=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "$APP" --menu "\nSelect an option:" 12 58 3 \
+CHOICE=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "$APP" --menu "\nSelect an option:" 12 58 5 \
   "${OPTIONS[@]}" 3>&1 1>&2 2>&3 || true)
 
 case "$CHOICE" in
