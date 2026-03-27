@@ -189,6 +189,36 @@ function update() {
   msg_ok "Updated successfully"
 }
 
+function bootstrap() {
+  msg_info "Installing root CA certificate"
+
+  while true;
+  do
+
+  CA_FQDN=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Bootstrap Options" --inputbox '\nCA FQDN (e.g. step-ca.example.com)' 10 50 "$CA_FQDN" 3>&1 1>&2 2>&3)
+  IP=$(dig +short "$CA_FQDN")
+  if [[ -z "$IP" ]]; then
+    die "Resolution failed for $CA_FQDN!"
+  fi
+  FINGERPRINT=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Bootstrap Options" --inputbox '\nCA Fingerprint' 10 50 "$FINGERPRINT" 3>&1 1>&2 2>&3)
+
+  if whiptail_yesno=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Bootstrap Options" --yesno "Continue with below?\n
+    CA FQDN: $CA_FQDN
+    CA Fingerprint: $FINGERPRINT" --no-button "Change" --yes-button "Continue" 15 70 3>&1 1>&2 2>&3); then
+    break
+  fi
+
+  done
+
+  step ca bootstrap -f --ca-url https://"$CA_FQDN" --install --fingerprint "$FINGERPRINT"  || die "CA Bootstrap failed!"
+  step certificate install --all ~/.step/certs/root_ca.crt || die "Installing root CA certificate failed!"
+  update-ca-certificates  || die "Update of System CA Certificates failed!"
+  
+  #$STD step certificate inspect https://"$CA_FQDN" || die "Main - Certificate Inspect failed!"
+  
+  msg_ok "Installed root CA certificate"
+}
+
 function install() {
   msg_info "Installing dependencies"
   $PKG_UPDATE
@@ -202,11 +232,10 @@ function install() {
   fi 
   msg_ok "Installed $APP"
 
-  msg_info "Initializing step-cli"
+  msg_info "Initializing $APP"
   install_helper_scripts
   $STD bootstrap || die "Main - CA Bootstrap failed!"
-  #$STD step certificate inspect https://"$CA_FQDN" || die "Main - Certificate Inspect failed!"
-  msg_ok "Initialized step-cli"
+  msg_ok "Initialized  $APP"
 
   msg_info "Requesting System Certificate"
   $STD $StepCSR  || die "Main - Requesting System Certificate failed!"
@@ -233,33 +262,6 @@ EOF
   $STD systemctl enable -q --now step.service
   systemctl status step.service
   msg_ok "Started step as a Daemon"
-}
-
-function bootstrap() {
-  msg_info "Installing root CA certificate"
-
-  while true;
-  do
-
-  CA_FQDN=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Bootstrap Options" --inputbox '\nCA FQDN (e.g. step-ca.example.com)' 10 50 "$CA_FQDN" 3>&1 1>&2 2>&3)
-  IP=$(dig +short "$CA_FQDN")
-  if [[ -z "$IP" ]]; then
-    die "Resolution failed for $CA_FQDN!"
-  fi
-  FINGERPRINT=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Bootstrap Options" --inputbox '\nCA Fingerprint' 10 50 "$FINGERPRINT" 3>&1 1>&2 2>&3)
-
-  if whiptail_yesno=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Bootstrap Options" --yesno "Continue with below?\n
-    CA FQDN: $CA_FQDN
-    CA Fingerprint: $FINGERPRINT" --no-button "Change" --yes-button "Continue" 15 70 3>&1 1>&2 2>&3); then
-    break
-  fi
-
-  done
-
-  step ca bootstrap -f --ca-url https://"$CA_FQDN" --install --fingerprint "$FINGERPRINT"  || die "CA Bootstrap failed!"
-  step certificate install --all ~/.step/certs/root_ca.crt || die "Installing root CA certificate failed!"
-  update-ca-certificates  || die "Update of System CA Certificates failed!"
-  msg_ok "Installed root CA certificate"
 }
 
 header_info
