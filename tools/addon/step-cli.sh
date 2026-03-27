@@ -51,6 +51,11 @@ function install_helper_scripts() {
 #!/usr/bin/env bash
 #
 
+function die() {
+  echo -e "\n${BL}[ERROR]${GN} ${RD}${1}${CL}\n"
+  exit 1
+}
+
 echo "Requesting system certificate"
 echo
 
@@ -62,8 +67,7 @@ HOST=$(hostname)
 DomainName=$(hostname -d)
 IP=$(dig +short "$FQDN")
 if [[ -z "$IP" ]]; then
-    echo "Resolution failed for $FQDN"
-    exit 1
+    die "Resolution failed for $FQDN!"
 fi
 AcmeProvisioner="acme@$DomainName"
 
@@ -83,8 +87,7 @@ fi
 FQDN=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'FQDN (e.g. MyLXC.example.com)' 10 50 "$FQDN" 3>&1 1>&2 2>&3)
 IP=$(dig +short "$FQDN")
 if [[ -z "$IP" ]]; then
-    echo "Resolution failed for $FQDN"
-    exit 1
+    die "Resolution failed for $FQDN!"
 fi
 HOST=$(echo "$FQDN" | awk -F'.' '{print $1}')
 IP=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Certificate Signing Request (CSR)" --inputbox 'IP Address (e.g. x.x.x.x)' 10 50 "$IP" 3>&1 1>&2 2>&3)
@@ -109,9 +112,9 @@ step ca certificate "$FQDN" \
   --provisioner="$AcmeProvisioner" \
   --not-after="$VALID_TO" \
   -f \
-  "${SAN_ARRAY[@]}" || exit 1
+  "${SAN_ARRAY[@]}" || die "Certificate Signing Request (CSR) failed!"
 
-step certificate inspect $StepCertDir/certs/"$FQDN".crt  || exit 1
+step certificate inspect $StepCertDir/certs/"$FQDN".crt  || die "Certificate inspect failed!"
 EOF
 
   $STD cat <<'EOF' >$StepBootstrap
@@ -127,8 +130,7 @@ do
 CA_FQDN=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Bootstrap Options" --inputbox '\nCA FQDN (e.g. step-ca.example.com)' 10 50 "$CA_FQDN" 3>&1 1>&2 2>&3)
 IP=$(dig +short "$CA_FQDN")
 if [[ -z "$IP" ]]; then
-    echo "Resolution failed for $CA_FQDN"
-    exit
+    die "Resolution failed for $CA_FQDN!"
 fi
 FINGERPRINT=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Bootstrap Options" --inputbox '\nCA Fingerprint' 10 50 "$FINGERPRINT" 3>&1 1>&2 2>&3)
 
@@ -140,9 +142,9 @@ fi
 
 done
 
-step ca bootstrap -f --ca-url https://"$CA_FQDN" --install --fingerprint "$FINGERPRINT"  || exit 1
-step certificate install --all ~/.step/certs/root_ca.crt || exit 1
-update-ca-certificates  || exit 1
+step ca bootstrap -f --ca-url https://"$CA_FQDN" --install --fingerprint "$FINGERPRINT"  || die "CA Bootstrap failed!"
+step certificate install --all ~/.step/certs/root_ca.crt || die "Installing root CA certificate failed!"
+update-ca-certificates  || die "Update of System CA Certificates failed!"
 EOF
   chmod 700 $StepCSR
   chmod 700 $StepBootstrap
@@ -190,8 +192,7 @@ function detect_os() {
       "debs" \
       "main"
   else
-    msg_error "Unsupported OS. Exiting."
-    exit 1
+    die "Unsupported OS. Exiting."
   fi
 }
 
@@ -206,8 +207,7 @@ function uninstall() {
 
 function update() {
   if [[ ! -e $BINARY_PATH ]]; then
-    msg_error "$APP is not installed"
-    exit 1
+    die "$APP is not installed"
   fi
   msg_info "Updating $APP"
     $PKG_UPDATE
@@ -230,12 +230,12 @@ function install() {
 
   msg_info "Initializing step-cli"
   install_helper_scripts
-  $STD $StepBootstrap || exit 1
-  #$STD step certificate inspect https://"$CA_FQDN"  || exit 1
+  $STD $StepBootstrap || die "Main - CA Bootstrap failed!"
+  #$STD step certificate inspect https://"$CA_FQDN" || die "Main - Certificate Inspect failed!"
   msg_ok "Initialized step-cli"
 
   msg_info "Requesting System Certificate"
-  $STD $StepCSR  || exit 1
+  $STD $StepCSR  || die "Main - Requesting System Certificate failed!"
   msg_ok "Requested system certificate"
 
   msg_info "Starting step as a Daemon"
@@ -255,7 +255,7 @@ ExecStart=/usr/bin/step ca renew --daemon $StepCertDir/certs/$FQDN.crt $StepCert
 [Install]
 WantedBy=multi-user.target
 EOF
-  #$STD systemctl enable -q --now step.service
+  #$STD systemctl enable -q --now step.service || die "Starting of step.service failed!"
   #systemctl status step.service
   msg_ok "Started step as a Daemon"
 }
