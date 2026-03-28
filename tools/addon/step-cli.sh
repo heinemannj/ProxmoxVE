@@ -55,7 +55,7 @@ function resolve_ip() {
   if [[ -z "$IP" ]]; then
     die "Resolution failed for $FQDN!"
   else
-    echo $IP
+    echo "$IP"
   fi
 }
 
