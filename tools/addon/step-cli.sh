@@ -48,6 +48,17 @@ function die() {
   exit 1
 }
 
+function resolve_ip() {
+  local FQDN=$1
+  local IP
+  IP=$(dig +short "$FQDN")
+  if [[ -z "$IP" ]]; then
+    echo $IP
+  else
+    die "Resolution failed for $FQDN!"
+  fi
+}
+
 function renew() {
   local FQDN=$1
   step certificate inspect $StepCertDir/localcerts/"$FQDN".crt  || die "Certificate renew failed!"
@@ -64,28 +75,25 @@ function inspect() {
 }
 
 function bootstrap() {
-  msg_info "Installing root CA certificate"
+  msg_info "Installing step-ca Root Certificate"
   while true;
   do
-    CA_FQDN=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Bootstrap Options" --inputbox '\nCA FQDN (e.g. step-ca.example.com)' 10 50 "$CA_FQDN" 3>&1 1>&2 2>&3)
-    IP=$(dig +short "$CA_FQDN")
-    if [[ -z "$IP" ]]; then
-      die "Resolution failed for $CA_FQDN!"
-    fi
-    FINGERPRINT=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Bootstrap Options" --inputbox '\nCA Fingerprint' 10 50 "$FINGERPRINT" 3>&1 1>&2 2>&3)
+    CA_FQDN=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Bootstrap Options" --inputbox '\nstep-ca FQDN (e.g. step-ca.example.com)' 10 50 "$CA_FQDN" 3>&1 1>&2 2>&3)
+    CA_IP=$(resolve_ip "$CA_FQDN")
+    CA_FINGERPRINT=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Bootstrap Options" --inputbox '\nstep-ca Fingerprint' 10 50 "$CA_FINGERPRINT" 3>&1 1>&2 2>&3)
 
     if whiptail_yesno=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "step-ca Bootstrap Options" --yesno "Continue with below?\n
-      CA FQDN: $CA_FQDN
-      CA Fingerprint: $FINGERPRINT" --no-button "Change" --yes-button "Continue" 15 70 3>&1 1>&2 2>&3); then
+      step-ca FQDN: $CA_FQDN
+      step-ca Fingerprint: $CA_FINGERPRINT" --no-button "Change" --yes-button "Continue" 15 70 3>&1 1>&2 2>&3); then
       break
     fi
   done
 
-  $STD step ca bootstrap -f --ca-url https://"$CA_FQDN" --install --fingerprint "$FINGERPRINT"  || die "CA Bootstrapping failed!"
-  $STD step certificate install --all ~/.step/certs/root_ca.crt || die "Installation of root CA Certificate failed!"
+  $STD step ca bootstrap -f --ca-url https://"$CA_FQDN" --install --fingerprint "$CA_FINGERPRINT"  || die "step-ca Bootstrapping failed!"
+  $STD step certificate install --all ~/.step/certs/root_ca.crt || die "Installation of step-ca Root Certificate failed!"
   $STD update-ca-certificates  || die "Update of System CA Certificates failed!"
-  $STD step certificate inspect https://"$CA_FQDN" || die "Inspection of root CA Certificate failed!"
-  msg_ok "Installed root CA certificate"
+  $STD step certificate inspect https://"$CA_FQDN" || die "Inspection of step-ca Root Certificate failed!"
+  msg_ok "Installed step-ca Root Certificate"
 }
 
 function request() {
@@ -94,10 +102,7 @@ function request() {
   FQDN=$(hostname -f)
   HOST=$(hostname)
   DomainName=$(hostname -d)
-  IP=$(dig +short "$FQDN")
-  if [[ -z "$IP" ]]; then
-    die "Resolution failed for $FQDN!"
-  fi
+  IP=$(resolve_ip "$FQDN")
   AcmeProvisioner="acme@$DomainName"
 
   while true;
@@ -255,7 +260,7 @@ function install() {
   mkdir -p /etc/ssl/localcerts
   msg_ok "Installed $APP"
 
-  $STD bootstrap || die "Main - CA Bootstrap failed!"
+  $STD bootstrap || die "Installation of step-ca Root Certificate failed!"
   $STD request || die "Main - Request System Certificate failed!"
 }
 
@@ -266,7 +271,7 @@ detect_os
 OPTIONS=(Install "Install $APP"
   Update "Update $APP"
   Uninstall "Uninstall $APP"
-  Bootstrap "Install root CA Certificate"
+  Bootstrap "Install step-ca Root Certificate"
   Request "Certificate Signing Request (CSR)"
   Renew "Renew Certificate"
   Revoke "Revoke Certificate"
