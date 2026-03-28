@@ -52,10 +52,10 @@ function resolve_ip() {
   local FQDN=$1
   local IP
   IP=$(dig +short "$FQDN")
-  if [[ "$IP" ]]; then
-    echo $IP
-  else
+  if [[ -z "$IP" ]]; then
     die "Resolution failed for $FQDN!"
+  else
+    echo $IP
   fi
 }
 
