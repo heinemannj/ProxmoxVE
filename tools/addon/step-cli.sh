@@ -52,7 +52,7 @@ function resolve_ip() {
   local FQDN=$1
   local IP
   IP=$(dig +short "$FQDN")
-  if [[ -z "$IP" ]]; then
+  if [[ "$IP" ]]; then
     echo $IP
   else
     die "Resolution failed for $FQDN!"
@@ -288,6 +288,6 @@ case "$CHOICE" in
   Request) request ;;
   Renew) renew ;;
   Revoke) revoke ;;
-  Inspect) inspect ;;
+  Inspect) inspect "";;
   *) exit 0 ;;
 esac
