@@ -149,7 +149,7 @@ function renew() {
     inspect "$CERT_SUBJECT"
   done
   msg_ok "Renewed Certificate(s)"
-  [[ "$BACK_TO_MENU" ]] && read -n 1 -r -s -p $'\nPress any key to continue...\n' && "$BACK_TO_MENU"
+  [[ "$BACK_TO_MENU" ]] && read -n 1 -r -s -p $'\nPress any key to continue...\n' && "$BACK_TO_MENU" || true
 }
 
 function revoke() {
@@ -165,7 +165,7 @@ function revoke() {
     rm -f "${KEY}" || die "Failed to delete ${KEY}!"
   done
   msg_ok "Revoked Certificate(s)"
-  [[ "$BACK_TO_MENU" ]] && read -n 1 -r -s -p $'\nPress any key to continue...\n' && "$BACK_TO_MENU"
+  [[ "$BACK_TO_MENU" ]] && read -n 1 -r -s -p $'\nPress any key to continue...\n' && "$BACK_TO_MENU" || true
 }
 
 function inspect() {
@@ -185,7 +185,7 @@ function inspect() {
     cat "${KEY}"
   done
   msg_ok "Inspected Certificate(s)"
-  [[ "$BACK_TO_MENU" ]] && read -n 1 -r -s -p $'\nPress any key to continue...\n' && "$BACK_TO_MENU"
+  [[ "$BACK_TO_MENU" ]] && read -n 1 -r -s -p $'\nPress any key to continue...\n' && "$BACK_TO_MENU" || true
 }
 
 function bootstrap_fqdn_check() {
@@ -217,7 +217,7 @@ function bootstrap() {
   $STD update-ca-certificates  || die "Update of System CA Certificates failed!"
   $STD step certificate inspect https://"$CA_FQDN" || die "Inspection of step-ca Root Certificate failed!"
   msg_ok "Installed step-ca Root Certificate"
-  [[ "$BACK_TO_MENU" ]] && read -n 1 -r -s -p $'\nPress any key to continue...\n' && "$BACK_TO_MENU"
+  [[ "$BACK_TO_MENU" ]] && read -n 1 -r -s -p $'\nPress any key to continue...\n' && "$BACK_TO_MENU" || true
 }
 
 function request() {
@@ -254,7 +254,7 @@ function request() {
   $STD systemctl enable --now cert-renewer@"${FQDN}".timer
   systemctl list-units cert-renewer@\*.timer
   msg_ok "Started Certificate Renewal as a Daemon"
-  [[ "$BACK_TO_MENU" ]] && read -n 1 -r -s -p $'\nPress any key to continue...\n' && "$BACK_TO_MENU"
+  [[ "$BACK_TO_MENU" ]] && read -n 1 -r -s -p $'\nPress any key to continue...\n' && "$BACK_TO_MENU" || true
 }
 
 function detect_os() {
