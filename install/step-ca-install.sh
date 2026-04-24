@@ -187,6 +187,25 @@ jq '.crl.cacheDuration = "24h0m0s"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${C
 jq '.crl.renewPeriod = "16h0m0s"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
 jq --arg a "https://${FQDN}${LISTENER}/1.0/crl" '.crl.idpURL = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
 
+FLAGS=(--force
+  --template="${CAIntermediateTemplate}"
+  --ca="$(step path)/certs/root_ca.crt"
+  --ca-key="$(step path)/secrets/root_ca_key"
+  --not-after="${X509MaxDur}"
+  --ca-password-file="${PwdFile}"
+  --password-file="${PwdFile}"
+  --bundle
+  --set country="${PKICountry}"
+  --set organization="${PKIName}"
+  --set organizationalUnit="${PKIOrganizationalUnit}"
+  --set issuingCertificateURL="https://${FQDN}${LISTENER}/roots.pem"
+  --set crlDistributionPoints="https://${FQDN}${LISTENER}/1.0/crl")
+
+$STD step certificate create "${PKIName} Intermediate CA" \
+  "$(step path)/certs/intermediate_ca.crt" \
+  "$(step path)/secrets/intermediate_ca_key" \
+  "${FLAGS[@]}"
+
 $STD step certificate install --all "$(step path)/certs/root_ca.crt"
 $STD update-ca-certificates
 
