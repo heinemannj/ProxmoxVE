@@ -67,7 +67,16 @@ mkdir -p "$EncryptionPwdDir"
 gpg -q --gen-random --armor 2 32 >"$PwdFile"
 gpg -q --gen-random --armor 2 32 >"$ProvisionerPwdFile"
 
-$STD step ca init --deployment-type="$DeploymentType" --ssh --name="$PKIName" --dns="$FQDN" --dns="$IP" --address="$LISTENER" --provisioner="$PKIProvisioner" --password-file="$PwdFile" --provisioner-password-file="$ProvisionerPwdFile"
+$STD step ca init \
+  --deployment-type="$DeploymentType" \
+  --ssh \
+  --name="$PKIName" \
+  --dns="$FQDN" \
+  --dns="$IP" \
+  --address="$LISTENER" \
+  --provisioner="$PKIProvisioner" \
+  --password-file="$PwdFile" \
+  --provisioner-password-file="$ProvisionerPwdFile"
 
 ln -s "$PwdFile" "$(step path)/password.txt"
 
@@ -145,9 +154,39 @@ cat <<EOF >"$X509LeafTemplateData"
 }
 EOF
 
-$STD step ca provisioner add "$AcmeProvisioner" --type ACME --admin-name "$AcmeProvisioner"
-$STD step ca provisioner update "$PKIProvisioner" --x509-min-dur="$X509MinDur" --x509-max-dur="$X509MaxDur" --x509-default-dur="$X509DefaultDur" --x509-template="$X509LeafTemplate" --allow-renewal-after-expiry
-$STD step ca provisioner update "$AcmeProvisioner" --x509-min-dur="$X509MinDur" --x509-max-dur="$X509MaxDur" --x509-default-dur="$X509DefaultDur" --x509-template="$X509LeafTemplate" --x509-template-data="$X509LeafTemplateData" --allow-renewal-after-expiry
+$STD step ca provisioner add "$AcmeProvisioner" \
+  --type ACME \
+  --admin-name "$AcmeProvisioner"
+
+$STD step ca provisioner update "$PKIProvisioner" \
+  --x509-min-dur="$X509MinDur" \
+  --x509-max-dur="$X509MaxDur" \
+  --x509-default-dur="$X509DefaultDur" \
+  --x509-template="$X509LeafTemplate" \
+  --x509-template-data="$X509LeafTemplateData" \
+  --allow-renewal-after-expiry
+
+$STD step ca provisioner update "$AcmeProvisioner" \
+  --x509-min-dur="$X509MinDur" \
+  --x509-max-dur="$X509MaxDur" \
+  --x509-default-dur="$X509DefaultDur" \
+  --x509-template="$X509LeafTemplate" \
+  --x509-template-data="$X509LeafTemplateData" \
+  --allow-renewal-after-expiry
+
+CAConfig="$(step path)/config/ca.json"
+jq --arg a "${X509LeafTemplate}" '.authority.provisioners.[1].options.x509.template = "$a"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
+jq --arg a "${X509LeafTemplate}" '.authority.provisioners.[2].options.x509.template = "$a"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
+jq --arg a "${PKICountry}" '.country = "$a"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
+jq --arg a "${PKIName}" '.organization = "$a"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
+jq --arg a "${PKIOrganizationalUnit}" '.organizationalUnit = "$a"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
+jq --arg a "${PKIName} Online CA" '.commonName = "$a"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
+jq '.crl.enabled = true' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
+jq '.crl.generateOnRevoke = true' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
+jq '.crl.cacheDuration = "24h0m0s"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
+jq '.crl.renewPeriod = "16h0m0s"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
+jq --arg a "https://${FQDN}${LISTENER}/1.0/crl" '.crl.idpURL = "$a"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
+
 $STD step certificate install --all "$(step path)/certs/root_ca.crt"
 $STD update-ca-certificates
 
