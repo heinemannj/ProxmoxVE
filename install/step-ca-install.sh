@@ -149,8 +149,8 @@ cat <<EOF >"$X509LeafTemplateData"
 	"country": "${PKICountry}",
 	"organization": "${PKIName}",
 	"organizationalUnit": "${PKIOrganizationalUnit}",
-	"issuingCertificateURL": "https://${FQDN}${LISTENER}/1.0/intermediates.pem",
-	"crlDistributionPoints": "https://${FQDN}${LISTENER}/1.0/crl"
+	"issuingCertificateURL": "https://${FQDN}/1.0/intermediates.pem",
+	"crlDistributionPoints": "https://${FQDN}/1.0/crl"
 }
 EOF
 
@@ -185,7 +185,7 @@ jq '.crl.enabled = true' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tm
 jq '.crl.generateOnRevoke = true' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
 jq '.crl.cacheDuration = "24h0m0s"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
 jq '.crl.renewPeriod = "16h0m0s"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
-jq --arg a "https://${FQDN}${LISTENER}/1.0/crl" '.crl.idpURL = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
+jq --arg a "https://${FQDN}/1.0/crl" '.crl.idpURL = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
 
 FLAGS=(--force
   --template="${CAIntermediateTemplate}"
@@ -198,8 +198,8 @@ FLAGS=(--force
   --set country="${PKICountry}"
   --set organization="${PKIName}"
   --set organizationalUnit="${PKIOrganizationalUnit}"
-  --set issuingCertificateURL="https://${FQDN}${LISTENER}/roots.pem"
-  --set crlDistributionPoints="https://${FQDN}${LISTENER}/1.0/crl")
+  --set issuingCertificateURL="https://${FQDN}/roots.pem"
+  --set crlDistributionPoints="https://${FQDN}/1.0/crl")
 
 $STD step certificate create "${PKIName} Intermediate CA" \
   "$(step path)/certs/intermediate_ca.crt" \
