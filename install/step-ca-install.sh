@@ -82,9 +82,29 @@ ln -s "$PwdFile" "$(step path)/password.txt"
 
 mkdir -p "$(step path)/templates/ca"
 mkdir -p "$(step path)/templates/x509"
+CARootTemplate="$(step path)/templates/ca/root_ca.tpl"
 CAIntermediateTemplate="$(step path)/templates/ca/intermediate_ca.tpl"
 X509LeafTemplate="$(step path)/templates/x509/leaf.tpl"
 X509LeafTemplateData="$(step path)/templates/x509/leaf_data.tpl"
+
+cat <<'EOF' >"$CARootTemplate"
+{
+	"subject": {
+		"country": {{ toJson .Insecure.User.country }},
+		"organization": {{ toJson .Insecure.User.organization }},
+		"organizationalUnit": {{ toJson .Insecure.User.organizationalUnit }},
+		"commonName": {{ toJson .Subject.CommonName }}
+	},
+  "issuer": {{ toJson .Subject }},
+	"keyUsage": ["certSign", "crlSign"],
+	"basicConstraints": {
+		"isCA": true,
+		"maxPathLen": 2
+	},
+	"issuingCertificateURL": [{{ toJson .Insecure.User.issuingCertificateURL }}],
+	"crlDistributionPoints": [{{ toJson .Insecure.User.crlDistributionPoints }}]
+}
+EOF
 
 cat <<'EOF' >"$CAIntermediateTemplate"
 {
@@ -175,8 +195,6 @@ $STD step ca provisioner update "$AcmeProvisioner" \
   --allow-renewal-after-expiry
 
 CAConfig="$(step path)/config/ca.json"
-#jq --arg a "${X509LeafTemplate}" '.authority.provisioners.[1].options.x509.template = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
-#jq --arg a "${X509LeafTemplate}" '.authority.provisioners.[2].options.x509.template = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
 jq --arg a "${PKICountry}" '.country = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
 jq --arg a "${PKIName}" '.organization = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
 jq --arg a "${PKIOrganizationalUnit}" '.organizationalUnit = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
@@ -186,6 +204,21 @@ jq '.crl.generateOnRevoke = true' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAC
 jq '.crl.cacheDuration = "24h0m0s"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
 jq '.crl.renewPeriod = "16h0m0s"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
 jq --arg a "https://${FQDN}${LISTENER}/1.0/crl" '.crl.idpURL = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
+
+FLAGS=(--force
+  --template="${CARootTemplate}"
+  --not-after="175200h"
+  --password-file="${PwdFile}"
+  --set country="${PKICountry}"
+  --set organization="${PKIName}"
+  --set organizationalUnit="${PKIOrganizationalUnit}"
+  --set issuingCertificateURL="https://${FQDN}${LISTENER}/roots.pem"
+  --set crlDistributionPoints="https://${FQDN}${LISTENER}/1.0/crl")
+
+$STD step certificate create "${PKIName} Root CA" \
+  "$(step path)/certs/root_ca.crt" \
+  "$(step path)/secrets/root_ca_key" \
+  "${FLAGS[@]}"
 
 FLAGS=(--force
   --template="${CAIntermediateTemplate}"
