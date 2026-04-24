@@ -55,6 +55,8 @@ X509MaxDur="$(prompt_input "Enter X509MaxDur" "87600h" 30)"
 X509DefaultDur="$(prompt_input "Enter X509DefaultDur" "168h" 30)"
 
 msg_info "Initializing step-ca"
+
+# Initialize step-ca
 DeploymentType="standalone"
 FQDN="$(hostname -f)"
 IP="${LOCAL_IP}"
@@ -80,8 +82,10 @@ $STD step ca init \
 
 ln -s "$PwdFile" "$(step path)/password.txt"
 
+# Define x509 Certificate Templates
 mkdir -p "$(step path)/templates/ca"
 mkdir -p "$(step path)/templates/x509"
+
 CARootTemplate="$(step path)/templates/ca/root_ca.tpl"
 CAIntermediateTemplate="$(step path)/templates/ca/intermediate_ca.tpl"
 X509LeafTemplate="$(step path)/templates/x509/leaf.tpl"
@@ -174,6 +178,7 @@ cat <<EOF >"$X509LeafTemplateData"
 }
 EOF
 
+# Configure CA Provisioners
 $STD step ca provisioner add "$AcmeProvisioner" \
   --type ACME \
   --admin-name "$AcmeProvisioner"
@@ -205,6 +210,7 @@ jq '.crl.cacheDuration = "24h0m0s"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${C
 jq '.crl.renewPeriod = "16h0m0s"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
 jq --arg a "https://${FQDN}${LISTENER}/1.0/crl" '.crl.idpURL = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
 
+# Generate Root CA Certificate and Key
 FLAGS=(--force
   --template="${CARootTemplate}"
   --not-after="175200h"
@@ -220,6 +226,7 @@ $STD step certificate create "${PKIName} Root CA" \
   "$(step path)/secrets/root_ca_key" \
   "${FLAGS[@]}"
 
+# Generate Intermediate CA Certificate and Key
 FLAGS=(--force
   --template="${CAIntermediateTemplate}"
   --ca="$(step path)/certs/root_ca.crt"
@@ -239,6 +246,7 @@ $STD step certificate create "${PKIName} Intermediate CA" \
   "$(step path)/secrets/intermediate_ca_key" \
   "${FLAGS[@]}"
 
+# Install Root CA Certificate to System Trust Store
 $STD step certificate install --all "$(step path)/certs/root_ca.crt"
 $STD update-ca-certificates
 
