@@ -38,8 +38,11 @@ STEPBIN="$(which step)"
 rm -f "$STEPBIN"
 cp -f "$(which step-cli)" "$STEPBIN"
 
+# Low port-binding capabilities (ports < 1024)
+# - Default step-ca listener port: 443
 setcap CAP_NET_BIND_SERVICE=+eip "$(which step-ca)"
 
+# Service User used by systemd step-ca.service
 $STD useradd --user-group --system --home "$(step path)" --shell /bin/false step
 msg_ok "Installed step-ca and step-cli"
 
@@ -62,12 +65,16 @@ FQDN="$(hostname -f)"
 IP="${LOCAL_IP}"
 LISTENER=":443"
 
+# Set different signing CA and Provisioner Passwords
 EncryptionPwdDir="$(step path)/encryption"
 PwdFile="$EncryptionPwdDir/ca.pwd"
 ProvisionerPwdFile="$EncryptionPwdDir/provisioner.pwd"
 mkdir -p "$EncryptionPwdDir"
 gpg -q --gen-random --armor 2 32 >"$PwdFile"
 gpg -q --gen-random --armor 2 32 >"$ProvisionerPwdFile"
+
+# Used by systemd step-ca.service
+ln -s "$PwdFile" "$(step path)/password.txt"
 
 # Usage of:
 # - SSH feature of step-ca
@@ -83,8 +90,6 @@ $STD step ca init \
   --provisioner="$PKIProvisioner" \
   --password-file="$PwdFile" \
   --provisioner-password-file="$ProvisionerPwdFile"
-
-ln -s "$PwdFile" "$(step path)/password.txt"
 
 # Define enhanced x509 CA and Certificate Templates
 mkdir -p "$(step path)/templates/ca"
@@ -218,6 +223,7 @@ jq --arg a "https://${FQDN}${LISTENER}/1.0/crl" '.crl.idpURL = $a' "${CAConfig}"
 # Generate Root CA Certificate and Key
 # - Validity: 262800h (30 Years)
 # - maxPathLen: 1 (Root -> Intermediate -> Leaf) => Only one Intermediate CA allowed below Root CA
+# - Active revocation on Intermediate CA and Leaf Certificates by the usage of build-in Certificate Revocation List (CRL)
 FLAGS=(--force
   --template="${CARootTemplate}"
   --not-after="262800h"
@@ -236,6 +242,7 @@ $STD step certificate create "${PKIName} Root CA" \
 # Generate Intermediate CA Certificate Bundle and Key
 # - Validity: 175200h (20 Years) => 2/3 of Root CA Validity
 # - maxPathLen: 0 (Root -> Intermediate -> Leaf) => Intermediate CA is only allowed to issue Leaf Certificates
+# - Active revocation on Leaf Certificates by the usage of build-in Certificate Revocation List (CRL)
 # - Bundle: Certificate Chain (including Root CA Certificate)
 FLAGS=(--force
   --template="${CAIntermediateTemplate}"
@@ -265,6 +272,8 @@ chmod -R 700 "$(step path)"
 msg_ok "Initialized step-ca"
 
 msg_info "Start step-ca as a Daemon"
+
+# https://smallstep.com/docs/step-ca/certificate-authority-server-production/#running-step-ca-as-a-daemon
 cat <<'EOF' >/etc/systemd/system/step-ca.service
 [Unit]
 Description=step-ca service
