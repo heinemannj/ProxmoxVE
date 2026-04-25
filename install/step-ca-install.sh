@@ -25,11 +25,11 @@ $STD apt install -y step-ca step-cli
 
 STEPPATH="/etc/step-ca"
 STEPHOME="/etc/step"
-export STEPPATH=$STEPPATH
-export STEPHOME=$STEPHOME
 
-sed  -i '1i export STEPPATH=/etc/step-ca' /etc/profile
-sed  -i '1i export STEPHOME=/etc/step' /etc/profile
+export STEPPATH=$STEPPATH
+echo "export STEPPATH=${STEPPATH}" >> /etc/profile
+export STEPHOME=$STEPHOME
+echo "export STEPHOME=${STEPHOME}" >> /etc/profile
 
 mkdir -p "$STEPHOME"
 
@@ -82,12 +82,12 @@ $STD step ca init \
 
 ln -s "$PwdFile" "$(step path)/password.txt"
 
-# Define x509 Certificate Templates
+# Define enhanced x509 CA and Certificate Templates
 mkdir -p "$(step path)/templates/ca"
 mkdir -p "$(step path)/templates/x509"
 
-CARootTemplate="$(step path)/templates/ca/root_ca.tpl"
-CAIntermediateTemplate="$(step path)/templates/ca/intermediate_ca.tpl"
+CARootTemplate="$(step path)/templates/ca/root.tpl"
+CAIntermediateTemplate="$(step path)/templates/ca/intermediate.tpl"
 X509LeafTemplate="$(step path)/templates/x509/leaf.tpl"
 X509LeafTemplateData="$(step path)/templates/x509/leaf_data.tpl"
 
@@ -211,9 +211,11 @@ jq '.crl.renewPeriod = "16h0m0s"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAC
 jq --arg a "https://${FQDN}${LISTENER}/1.0/crl" '.crl.idpURL = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
 
 # Generate Root CA Certificate and Key
+# - Validity: 262800h (30 Years)
+# - maxPathLen: 2
 FLAGS=(--force
   --template="${CARootTemplate}"
-  --not-after="175200h"
+  --not-after="262800h"
   --password-file="${PwdFile}"
   --set country="${PKICountry}"
   --set organization="${PKIName}"
@@ -226,12 +228,15 @@ $STD step certificate create "${PKIName} Root CA" \
   "$(step path)/secrets/root_ca_key" \
   "${FLAGS[@]}"
 
-# Generate Intermediate CA Certificate and Key
+# Generate Intermediate CA Certificate Bundle and Key
+# - Validity: 175200h (20 Years) => 2/3 of Root CA Validity
+# - maxPathLen: 1
+# - Bundle: Certificate Chain (including Root CA Certificate)
 FLAGS=(--force
   --template="${CAIntermediateTemplate}"
   --ca="$(step path)/certs/root_ca.crt"
   --ca-key="$(step path)/secrets/root_ca_key"
-  --not-after="${X509MaxDur}"
+  --not-after="175200h"
   --ca-password-file="${PwdFile}"
   --password-file="${PwdFile}"
   --bundle
