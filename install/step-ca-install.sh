@@ -69,6 +69,10 @@ mkdir -p "$EncryptionPwdDir"
 gpg -q --gen-random --armor 2 32 >"$PwdFile"
 gpg -q --gen-random --armor 2 32 >"$ProvisionerPwdFile"
 
+# Usage of:
+# - SSH feature of step-ca
+# - BadgerDB (badgerv2) => Default DB backend of step-ca
+# - badgerFileLoadingMode: FileIO (instead of MemoryMap) for LXC with low RAM
 $STD step ca init \
   --deployment-type="$DeploymentType" \
   --ssh \
@@ -103,7 +107,7 @@ cat <<'EOF' >"$CARootTemplate"
 	"keyUsage": ["certSign", "crlSign"],
 	"basicConstraints": {
 		"isCA": true,
-		"maxPathLen": 2
+		"maxPathLen": 1
 	},
 	"issuingCertificateURL": [{{ toJson .Insecure.User.issuingCertificateURL }}],
 	"crlDistributionPoints": [{{ toJson .Insecure.User.crlDistributionPoints }}]
@@ -121,7 +125,7 @@ cat <<'EOF' >"$CAIntermediateTemplate"
 	"keyUsage": ["certSign", "crlSign"],
 	"basicConstraints": {
 		"isCA": true,
-		"maxPathLen": 1
+		"maxPathLen": 0
 	},
 	"issuingCertificateURL": [{{ toJson .Insecure.User.issuingCertificateURL }}],
 	"crlDistributionPoints": [{{ toJson .Insecure.User.crlDistributionPoints }}]
@@ -178,7 +182,7 @@ cat <<EOF >"$X509LeafTemplateData"
 }
 EOF
 
-# Configure CA Provisioners
+# Configure CA Provisioners, DB and CRL settings
 $STD step ca provisioner add "$AcmeProvisioner" \
   --type ACME \
   --admin-name "$AcmeProvisioner"
@@ -204,6 +208,7 @@ jq --arg a "${PKICountry}" '.country = $a' "${CAConfig}" > "${CAConfig}_tmp" && 
 jq --arg a "${PKIName}" '.organization = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
 jq --arg a "${PKIOrganizationalUnit}" '.organizationalUnit = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
 jq --arg a "${PKIName} Online CA" '.commonName = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
+jq '.db.badgerFileLoadingMode = "FileIO"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
 jq '.crl.enabled = true' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
 jq '.crl.generateOnRevoke = true' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
 jq '.crl.cacheDuration = "24h0m0s"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
@@ -212,7 +217,7 @@ jq --arg a "https://${FQDN}${LISTENER}/1.0/crl" '.crl.idpURL = $a' "${CAConfig}"
 
 # Generate Root CA Certificate and Key
 # - Validity: 262800h (30 Years)
-# - maxPathLen: 2
+# - maxPathLen: 1 (Root -> Intermediate -> Leaf) => Only one Intermediate CA allowed below Root CA
 FLAGS=(--force
   --template="${CARootTemplate}"
   --not-after="262800h"
@@ -230,7 +235,7 @@ $STD step certificate create "${PKIName} Root CA" \
 
 # Generate Intermediate CA Certificate Bundle and Key
 # - Validity: 175200h (20 Years) => 2/3 of Root CA Validity
-# - maxPathLen: 1
+# - maxPathLen: 0 (Root -> Intermediate -> Leaf) => Intermediate CA is only allowed to issue Leaf Certificates
 # - Bundle: Certificate Chain (including Root CA Certificate)
 FLAGS=(--force
   --template="${CAIntermediateTemplate}"
