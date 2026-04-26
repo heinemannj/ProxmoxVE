@@ -182,8 +182,8 @@ cat <<EOF >"$X509LeafTemplateData"
 	"country": "${PKICountry}",
 	"organization": "${PKIName}",
 	"organizationalUnit": "${PKIOrganizationalUnit}",
-	"issuingCertificateURL": "https://${FQDN}${LISTENER}/1.0/intermediates.pem",
-	"crlDistributionPoints": "https://${FQDN}${LISTENER}/1.0/crl"
+	"issuingCertificateURL": "https://${FQDN}${LISTENER}/intermediates.pem",
+	"crlDistributionPoints": "https://${FQDN}${LISTENER}/crl"
 }
 EOF
 
@@ -218,21 +218,21 @@ jq '.crl.enabled = true' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tm
 jq '.crl.generateOnRevoke = true' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
 jq '.crl.cacheDuration = "24h0m0s"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
 jq '.crl.renewPeriod = "16h0m0s"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
-jq --arg a "https://${FQDN}${LISTENER}/1.0/crl" '.crl.idpURL = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
+jq --arg a "https://${FQDN}${LISTENER}/crl" '.crl.idpURL = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
 
 # Generate Root CA Certificate and Key
-# - Validity: 262800h (30 Years)
+# - Validity: 219168h (~25 Years)
 # - maxPathLen: 1 (Root -> Intermediate -> Leaf) => Only one Intermediate CA allowed below Root CA
 # - Active revocation on Intermediate CA and Leaf Certificates by the usage of build-in Certificate Revocation List (CRL)
 FLAGS=(--force
   --template="${CARootTemplate}"
-  --not-after="262800h"
+  --not-after="219168h"
   --password-file="${PwdFile}"
   --set country="${PKICountry}"
   --set organization="${PKIName}"
   --set organizationalUnit="${PKIOrganizationalUnit}"
   --set issuingCertificateURL="https://${FQDN}${LISTENER}/roots.pem"
-  --set crlDistributionPoints="https://${FQDN}${LISTENER}/1.0/crl")
+  --set crlDistributionPoints="https://${FQDN}${LISTENER}/crl")
 
 $STD step certificate create "${PKIName} Root CA" \
   "$(step path)/certs/root_ca.crt" \
@@ -240,7 +240,7 @@ $STD step certificate create "${PKIName} Root CA" \
   "${FLAGS[@]}"
 
 # Generate Intermediate CA Certificate Bundle and Key
-# - Validity: 175200h (20 Years) => 2/3 of Root CA Validity
+# - Validity: 175368h (~20 Years)
 # - maxPathLen: 0 (Root -> Intermediate -> Leaf) => Intermediate CA is only allowed to issue Leaf Certificates
 # - Active revocation on Leaf Certificates by the usage of build-in Certificate Revocation List (CRL)
 # - Bundle: Certificate Chain (including Root CA Certificate)
@@ -248,7 +248,7 @@ FLAGS=(--force
   --template="${CAIntermediateTemplate}"
   --ca="$(step path)/certs/root_ca.crt"
   --ca-key="$(step path)/secrets/root_ca_key"
-  --not-after="175200h"
+  --not-after="175368h"
   --ca-password-file="${PwdFile}"
   --password-file="${PwdFile}"
   --bundle
@@ -256,7 +256,7 @@ FLAGS=(--force
   --set organization="${PKIName}"
   --set organizationalUnit="${PKIOrganizationalUnit}"
   --set issuingCertificateURL="https://${FQDN}${LISTENER}/roots.pem"
-  --set crlDistributionPoints="https://${FQDN}${LISTENER}/1.0/crl")
+  --set crlDistributionPoints="https://${FQDN}${LISTENER}/crl")
 
 $STD step certificate create "${PKIName} Intermediate CA" \
   "$(step path)/certs/intermediate_ca.crt" \
