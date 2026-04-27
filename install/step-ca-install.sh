@@ -64,6 +64,7 @@ DeploymentType="standalone"
 FQDN="$(hostname -f)"
 IP="${LOCAL_IP}"
 LISTENER=":443"
+LISTENER_INSECURE=":80"
 
 # Set different signing CA and Provisioner Passwords
 EncryptionPwdDir="$(step path)/encryption"
@@ -165,14 +166,14 @@ cat <<'EOF' >"$X509LeafTemplate"
 {{- end }}
 	"extKeyUsage": ["serverAuth", "clientAuth"],
 {{- if .Insecure.User.issuingCertificateURL }}
-	"issuingCertificateURL": {{ toJson .Insecure.User.issuingCertificateURL }},
+	"issuingCertificateURL": [{{ toJson .Insecure.User.issuingCertificateURL }}],
 {{- else }}
-	"issuingCertificateURL": {{ toJson .issuingCertificateURL }},
+	"issuingCertificateURL": [{{ toJson .issuingCertificateURL }}],
 {{- end }}
 {{- if .Insecure.User.crlDistributionPoints }}
-	"crlDistributionPoints": {{ toJson .Insecure.User.crlDistributionPoints }}
+	"crlDistributionPoints": [{{ toJson .Insecure.User.crlDistributionPoints }}]
 {{- else }}
-	"crlDistributionPoints": {{ toJson .crlDistributionPoints }}
+	"crlDistributionPoints": [{{ toJson .crlDistributionPoints }}]
 {{- end }}
 }
 EOF
@@ -182,8 +183,8 @@ cat <<EOF >"$X509LeafTemplateData"
 	"country": "${PKICountry}",
 	"organization": "${PKIName}",
 	"organizationalUnit": "${PKIOrganizationalUnit}",
-	"issuingCertificateURL": "https://${FQDN}${LISTENER}/intermediates.pem",
-	"crlDistributionPoints": "https://${FQDN}${LISTENER}/crl"
+	"issuingCertificateURL": ["https://${FQDN}${LISTENER}/intermediates.pem"],
+	"crlDistributionPoints": ["https://${FQDN}${LISTENER}/crl"]
 }
 EOF
 
@@ -219,6 +220,7 @@ jq '.crl.generateOnRevoke = true' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAC
 jq '.crl.cacheDuration = "24h0m0s"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
 jq '.crl.renewPeriod = "16h0m0s"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
 jq --arg a "https://${FQDN}${LISTENER}/crl" '.crl.idpURL = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
+jq --arg a "$LISTENER_INSECURE" '.insecureAddress = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
 
 # Generate Root CA Certificate and Key
 # - Validity: 219168h (~25 Years)
