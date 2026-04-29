@@ -65,6 +65,7 @@ FQDN="$(hostname -f)"
 IP="${LOCAL_IP}"
 LISTENER=":443"
 LISTENER_INSECURE=":80"
+CAConfig="$(step path)/config/ca.json"
 
 # Set different signing CA and Provisioner Passwords
 EncryptionPwdDir="$(step path)/encryption"
@@ -89,7 +90,7 @@ $STD step ca init \
   --dns="$FQDN" \
   --dns="$IP" \
   --address="$LISTENER" \
-  --provisioner="$PKIProvisioner" \
+  --provisioner="Admin JWK" \
   --password-file="$PwdFile" \
   --provisioner-password-file="$ProvisionerPwdFile"
 
@@ -189,28 +190,7 @@ cat <<EOF >"$X509LeafTemplateData"
 }
 EOF
 
-# Configure CA Provisioners, DB and CRL settings
-$STD step ca provisioner add "$AcmeProvisioner" \
-  --type ACME \
-  --admin-name "$AcmeProvisioner"
-
-$STD step ca provisioner update "$PKIProvisioner" \
-  --x509-min-dur="$X509MinDur" \
-  --x509-max-dur="$X509MaxDur" \
-  --x509-default-dur="$X509DefaultDur" \
-  --x509-template="$X509LeafTemplate" \
-  --x509-template-data="$X509LeafTemplateData" \
-  --allow-renewal-after-expiry
-
-$STD step ca provisioner update "$AcmeProvisioner" \
-  --x509-min-dur="$X509MinDur" \
-  --x509-max-dur="$X509MaxDur" \
-  --x509-default-dur="$X509DefaultDur" \
-  --x509-template="$X509LeafTemplate" \
-  --x509-template-data="$X509LeafTemplateData" \
-  --allow-renewal-after-expiry
-
-CAConfig="$(step path)/config/ca.json"
+# Configure DB and CRL settings
 jq --arg a "${PKICountry}" '.country = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
 jq --arg a "${PKIName}" '.organization = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
 jq --arg a "${PKIOrganizationalUnit}" '.organizationalUnit = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
@@ -333,6 +313,56 @@ WantedBy=multi-user.target
 EOF
 $STD systemctl enable -q --now step-ca
 msg_ok "Started step-ca as a Daemon"
+
+msg_info "Configuring step-ca Admins and Provisioners"
+
+# Configure CA Super-Admin, Admins and Provisioners settings
+AdminDir="$(step path)/admins"
+AdminCert="$AdminDir/admin.crt"
+AdminKey="$AdminDir/admin.key"
+mkdir -p "$AdminDir"
+
+$STD step ca certificate step \
+  "$AdminCert" \
+  "$AdminKey" \
+  --provisioner="Admin JWK" \
+  --provisioner-password-file=$ProvisionerPwdFile
+
+$STD step ca provisioner add "$PKIProvisioner" \
+  --type JWK \
+  --admin-name="$PKIProvisioner" \
+  --admin-cert="$AdminCert" \
+  --admin-key="$AdminKey"
+
+$STD step ca provisioner add "$AcmeProvisioner" \
+  --type ACME \
+  --admin-name "$AcmeProvisioner" \
+  --admin-cert="$AdminCert" \
+  --admin-key="$AdminKey"
+
+$STD step ca provisioner update "$PKIProvisioner" \
+  --x509-min-dur="$X509MinDur" \
+  --x509-max-dur="$X509MaxDur" \
+  --x509-default-dur="$X509DefaultDur" \
+  --x509-template="$X509LeafTemplate" \
+  --x509-template-data="$X509LeafTemplateData" \
+  --allow-renewal-after-expiry \
+  --admin-cert="$AdminCert" \
+  --admin-key="$AdminKey"
+
+$STD step ca provisioner update "$AcmeProvisioner" \
+  --x509-min-dur="$X509MinDur" \
+  --x509-max-dur="$X509MaxDur" \
+  --x509-default-dur="$X509DefaultDur" \
+  --x509-template="$X509LeafTemplate" \
+  --x509-template-data="$X509LeafTemplateData" \
+  --allow-renewal-after-expiry \
+  --admin-cert="$AdminCert" \
+  --admin-key="$AdminKey"
+
+chown -R step:step "$(step path)"
+chmod -R 700 "$(step path)"
+msg_ok "Configured step-ca Admins and Provisioners"
 
 fetch_and_deploy_gh_release "step-badger" "lukasz-lobocki/step-badger" "prebuild" "latest" "/opt/step-badger" "step-badger_Linux_x86_64.tar.gz"
 ln -s /opt/step-badger/step-badger /usr/local/bin/step-badger
