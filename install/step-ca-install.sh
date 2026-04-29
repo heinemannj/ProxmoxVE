@@ -83,6 +83,7 @@ ln -s "$PwdFile" "$(step path)/password.txt"
 # - badgerFileLoadingMode: FileIO (instead of MemoryMap) for LXC with low RAM
 $STD step ca init \
   --deployment-type="$DeploymentType" \
+  --remote-management \
   --ssh \
   --name="$PKIName" \
   --dns="$FQDN" \
