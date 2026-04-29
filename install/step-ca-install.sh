@@ -375,7 +375,7 @@ $STD systemctl enable -q --now step-ca
 sleep 5
 msg_ok "Started step-ca as a Daemon"
 
-msg_info "Configuring step-ca Admins and Provisioners"
+msg_info "Configuring step-ca Admins and Provisioners\n"
 
 # Configure CA Super-Admin, Admins and Provisioners settings
 AdminDir="$(step path)/admins"
