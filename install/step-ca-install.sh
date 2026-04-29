@@ -57,6 +57,35 @@ X509MinDur="$(prompt_input "Enter X509MinDur" "48h" 30)"
 X509MaxDur="$(prompt_input "Enter X509MaxDur" "87600h" 30)"
 X509DefaultDur="$(prompt_input "Enter X509DefaultDur" "168h" 30)"
 
+DB_TYPE="$(prompt_input "Enter DBType (badgerv2, mysql or postgresql)" "badgerv2" 30)"
+
+DB_NAME="stepca"
+DB_USER="stepadmin"
+
+case "$DB_TYPE" in
+mysql)
+  setup_mariadb
+  MARIADB_DB_NAME="$DB_NAME" MARIADB_DB_USER="$DB_USER" setup_mariadb_db
+  
+  msg_info "Setup MariaDB"
+  echo "MariaDB DB_NAME: $MARIADB_DB_NAME" > "/root/db_config.txt"
+  echo "MariaDB DB_USER: $MARIADB_DB_USER" >> "/root/db_config.txt"
+  echo "MariaDB DB_PASSWORD: $MARIADB_DB_PASS" >> "/root/db_config.txt"
+  msg_ok "Setup MariaDB"
+  ;;
+postgresql)
+  setup_postgresql
+  PG_DB_NAME="$DB_NAME" PG_DB_USER="$DB_USER" setup_postgresql_db
+
+  msg_info "Setup PostgreSQL"
+  echo "PostgreSQL DB_NAME: $PG_DB_NAME" > "/root/db_config.txt"
+  echo "PostgreSQL DB_USER: $PG_DB_USER" >> "/root/db_config.txt"
+  echo "PostgreSQL DB_PASSWORD: $PG_DB_PASS" >> "/root/db_config.txt"
+  msg_ok "Setup PostgreSQL"
+  ;;
+esac
+}
+
 msg_info "Initializing step-ca"
 
 # Initialize step-ca
@@ -188,14 +217,36 @@ cat <<EOF >"$X509LeafTemplateData"
 }
 EOF
 
-# Configure DB settings
-# - BadgerDB (badgerv2) => Default DB backend of step-ca
-# - badgerFileLoadingMode: FileIO (instead of MemoryMap) for LXC with low RAM
-jq '.db.type = "badgerv2"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
-jq --arg a "$(step path)/db" '.db.dataSource = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
-jq '.db.badgerFileLoadingMode = "FileIO"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
-
-mkdir -p "$(step path)/db"
+# Configure DB and DB settings
+case "$DB_TYPE" in
+badgerv2)
+  # - BadgerDB (badgerv2) => Default DB backend of step-ca
+  # - badgerFileLoadingMode: FileIO (instead of MemoryMap) for LXC with low RAM
+  # - NOT appropriate for load balancing, high availability deployments
+  # - Works with 'step-badger'
+  jq '.db.type = "badgerv2"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
+  jq --arg a "$(step path)/db" '.db.dataSource = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
+  jq '.db.badgerFileLoadingMode = "FileIO"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
+  mkdir -p "$(step path)/db"
+  ;;
+mysql)
+  # - MySQL => as a simple key-value store, not as a relational database
+  # - Appropriate for load balancing, high availability deployments
+  # - Works with 'LabCA'
+  jq '.db.type = "mysql"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
+  jq --arg a "${MARIADB_DB_USER}:${MARIADB_DB_PASS}@tcp(127.0.0.1:3306)/" '.db.dataSource = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
+  jq --arg a "${MARIADB_DB_NAME}" '.db.database = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
+  ;;
+postgresql)
+  # - PostgreSQL => as a simple key-value store, not as a relational database
+  # - Appropriate for load balancing, high availability deployments
+  # - Works with 'Step CA Admin'
+  jq '.db.type = "postgresql"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
+  jq --arg a "postgresql://${PG_DB_USER}:${PG_DB_PASS}@127.0.0.1:5432/" '.db.dataSource = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
+  jq --arg a "$PG_DB_NAME" '.db.database = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
+  ;;
+esac
+}
 
 # Configure Remote Provisioner Management
 jq '.authority.enableAdmin = true' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
@@ -376,8 +427,49 @@ chown -R step:step "$(step path)"
 chmod -R 700 "$(step path)"
 msg_ok "Configured step-ca Admins and Provisioners"
 
-fetch_and_deploy_gh_release "step-badger" "lukasz-lobocki/step-badger" "prebuild" "latest" "/opt/step-badger" "step-badger_Linux_x86_64.tar.gz"
-ln -s /opt/step-badger/step-badger /usr/local/bin/step-badger
+# Configure DB Frontend
+case "$DB_TYPE" in
+badgerv2)
+  fetch_and_deploy_gh_release "step-badger" "lukasz-lobocki/step-badger" "prebuild" "latest" "/opt/step-badger" "step-badger_Linux_x86_64.tar.gz"
+  ln -s /opt/step-badger/step-badger /usr/local/bin/step-badger
+  ;;
+mysql)
+  fetch_and_deploy_gh_release "labca-gui" "hakwerk/labca" "binary"
+  
+  mkdir -p /etc/labca
+  cat <<EOF >/etc/labca/config.json
+{
+    "standalone": true
+}
+EOF
+
+  msg_info "Creating LabCA GUI Service"
+  cat <<EOF >/etc/systemd/system/labca.service
+[Unit]
+Description=LabCA GUI Service
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=30
+StartLimitBurst=3
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/labca-gui --init -config /etc/labca/config.json -port 3000
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  systemctl enable -q --now labca
+  msg_ok "Created LabCA GUI Service"
+  ;;
+postgresql)
+  msg_warn "tbd"
+  ;;
+esac
+}
 
 motd_ssh
 customize
