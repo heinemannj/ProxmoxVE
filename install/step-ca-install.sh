@@ -318,7 +318,7 @@ ReadOnlyPaths=/etc/step-ca
 [Install]
 WantedBy=multi-user.target
 EOF
-$STD systemctl enable -q --now step-ca
+#$STD systemctl enable -q --now step-ca
 msg_ok "Started step-ca as a Daemon"
 
 msg_info "Configuring step-ca Admins and Provisioners"
