@@ -336,11 +336,13 @@ $STD step ca certificate step \
   "$AdminCert" \
   "$AdminKey" \
   --provisioner="Admin JWK" \
-  --provisioner-password-file=$ProvisionerPwdFile
+  --provisioner-password-file="$ProvisionerPwdFile"
 
 $STD step ca provisioner add "$PKIProvisioner" \
   --type JWK \
   --admin-name="$PKIProvisioner" \
+  --create \
+  --password-file="$ProvisionerPwdFile" \
   --admin-cert="$AdminCert" \
   --admin-key="$AdminKey"
 
