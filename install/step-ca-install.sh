@@ -80,11 +80,9 @@ ln -s "$PwdFile" "$(step path)/password.txt"
 
 # Usage of:
 # - SSH feature of step-ca
-# - BadgerDB (badgerv2) => Default DB backend of step-ca
-# - badgerFileLoadingMode: FileIO (instead of MemoryMap) for LXC with low RAM
 $STD step ca init \
   --deployment-type="$DeploymentType" \
-  --remote-management \
+  --no-db \
   --ssh \
   --name="$PKIName" \
   --dns="$FQDN" \
@@ -190,12 +188,21 @@ cat <<EOF >"$X509LeafTemplateData"
 }
 EOF
 
-# Configure DB and CRL settings
+# Configure DB settings
+# - BadgerDB (badgerv2) => Default DB backend of step-ca
+# - badgerFileLoadingMode: FileIO (instead of MemoryMap) for LXC with low RAM
+jq '.db.type = "badgerv2"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
+jq --arg a "$(step path)/db" '.db.dataSource = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
+jq '.db.badgerFileLoadingMode = "FileIO"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
+
+# Configure Remote Provisioner Management
+jq '.authority.enableAdmin = true' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
+
+# Configure CRL settings
 jq --arg a "${PKICountry}" '.country = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
 jq --arg a "${PKIName}" '.organization = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
 jq --arg a "${PKIOrganizationalUnit}" '.organizationalUnit = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
 jq --arg a "${PKIName} Online CA" '.commonName = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
-jq '.db.badgerFileLoadingMode = "FileIO"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
 jq '.crl.enabled = true' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
 jq '.crl.generateOnRevoke = true' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
 jq '.crl.cacheDuration = "24h0m0s"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
