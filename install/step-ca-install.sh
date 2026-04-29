@@ -38,6 +38,9 @@ STEPBIN="$(which step)"
 rm -f "$STEPBIN"
 cp -f "$(which step-cli)" "$STEPBIN"
 
+# Patch for making systemd happy
+mkdir -p "$(step path)/db"
+
 # Low port-binding capabilities (ports < 1024)
 # - Default step-ca listener port: 443
 setcap CAP_NET_BIND_SERVICE=+eip "$(which step-ca)"
@@ -226,7 +229,6 @@ badgerv2)
   jq '.db.type = "badgerv2"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
   jq --arg a "$(step path)/db" '.db.dataSource = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
   jq '.db.badgerFileLoadingMode = "FileIO"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
-  mkdir -p "$(step path)/db"
   ;;
 mysql)
   # - MySQL => as a simple key-value store, not as a relational database
