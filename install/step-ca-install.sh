@@ -84,7 +84,6 @@ postgresql)
   msg_ok "Setup PostgreSQL"
   ;;
 esac
-}
 
 msg_info "Initializing step-ca"
 
@@ -246,7 +245,6 @@ postgresql)
   jq --arg a "$PG_DB_NAME" '.db.database = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
   ;;
 esac
-}
 
 # Configure Remote Provisioner Management
 jq '.authority.enableAdmin = true' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
@@ -469,7 +467,6 @@ postgresql)
   msg_warn "tbd"
   ;;
 esac
-}
 
 motd_ssh
 customize
