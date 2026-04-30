@@ -500,7 +500,7 @@ postgresql)
     "port": 5432
   },
   "ca": {
-    "url": "https://step-ca-30.fritz.box",
+    "url": "https://${FQDN}",
     "fingerprint": "${CAFingerPrint}",
     "admin_provisioner_name": "${CAAdmin}"
   }
