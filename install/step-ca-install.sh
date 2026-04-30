@@ -331,7 +331,7 @@ jq '.authority.provisioners = []' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAC
 $STD systemctl start step-ca
 msg_ok "Started step-ca as a Daemon"
 
-msg_info "Creating CA Root and Intermediate Certificates and Keys"
+msg_info "Creating CA Root and Intermediate Certificates and Keys\n"
 # Generate Root CA Certificate and Key
 # - Validity: 219168h (~25 Years)
 # - maxPathLen: 1 (Root -> Intermediate -> Leaf) => Only one Intermediate CA allowed below Root CA
@@ -382,6 +382,7 @@ $STD update-ca-certificates
 chown -R step:step "$(step path)"
 chmod -R 700 "$(step path)"
 $STD systemctl restart step-ca
+sleep 5
 msg_ok "Created CA Root and Intermediate Certificates and Keys"
 
 msg_info "Configuring step-ca Admins and Provisioners\n"
@@ -391,45 +392,45 @@ AdminCert="$AdminDir/admin.crt"
 AdminKey="$AdminDir/admin.key"
 mkdir -p "$AdminDir"
 
-$STD step ca certificate step \
-  "$AdminCert" \
-  "$AdminKey" \
-  --provisioner="Admin JWK" \
-  --provisioner-password-file="$ProvisionerPwdFile"
-
-$STD step ca provisioner add "$PKIProvisioner" \
-  --type JWK \
-  --admin-name="$PKIProvisioner" \
-  --create \
-  --password-file="$ProvisionerPwdFile" \
-  --admin-cert="$AdminCert" \
-  --admin-key="$AdminKey"
-
-$STD step ca provisioner add "$AcmeProvisioner" \
-  --type ACME \
-  --admin-name "$AcmeProvisioner" \
-  --admin-cert="$AdminCert" \
-  --admin-key="$AdminKey"
-
-$STD step ca provisioner update "$PKIProvisioner" \
-  --x509-min-dur="$X509MinDur" \
-  --x509-max-dur="$X509MaxDur" \
-  --x509-default-dur="$X509DefaultDur" \
-  --x509-template="$X509LeafTemplate" \
-  --x509-template-data="$X509LeafTemplateData" \
-  --allow-renewal-after-expiry \
-  --admin-cert="$AdminCert" \
-  --admin-key="$AdminKey"
-
-$STD step ca provisioner update "$AcmeProvisioner" \
-  --x509-min-dur="$X509MinDur" \
-  --x509-max-dur="$X509MaxDur" \
-  --x509-default-dur="$X509DefaultDur" \
-  --x509-template="$X509LeafTemplate" \
-  --x509-template-data="$X509LeafTemplateData" \
-  --allow-renewal-after-expiry \
-  --admin-cert="$AdminCert" \
-  --admin-key="$AdminKey"
+#$STD step ca certificate step \
+#  "$AdminCert" \
+#  "$AdminKey" \
+#  --provisioner="Admin JWK" \
+#  --provisioner-password-file="$ProvisionerPwdFile"
+#
+#$STD step ca provisioner add "$PKIProvisioner" \
+#  --type JWK \
+#  --admin-name="$PKIProvisioner" \
+#  --create \
+#  --password-file="$ProvisionerPwdFile" \
+#  --admin-cert="$AdminCert" \
+#  --admin-key="$AdminKey"
+#
+#$STD step ca provisioner add "$AcmeProvisioner" \
+#  --type ACME \
+#  --admin-name "$AcmeProvisioner" \
+#  --admin-cert="$AdminCert" \
+#  --admin-key="$AdminKey"
+#
+#$STD step ca provisioner update "$PKIProvisioner" \
+#  --x509-min-dur="$X509MinDur" \
+#  --x509-max-dur="$X509MaxDur" \
+#  --x509-default-dur="$X509DefaultDur" \
+#  --x509-template="$X509LeafTemplate" \
+#  --x509-template-data="$X509LeafTemplateData" \
+#  --allow-renewal-after-expiry \
+#  --admin-cert="$AdminCert" \
+#  --admin-key="$AdminKey"
+#
+#$STD step ca provisioner update "$AcmeProvisioner" \
+#  --x509-min-dur="$X509MinDur" \
+#  --x509-max-dur="$X509MaxDur" \
+#  --x509-default-dur="$X509DefaultDur" \
+#  --x509-template="$X509LeafTemplate" \
+#  --x509-template-data="$X509LeafTemplateData" \
+#  --allow-renewal-after-expiry \
+#  --admin-cert="$AdminCert" \
+#  --admin-key="$AdminKey"
 
 chown -R step:step "$(step path)"
 chmod -R 700 "$(step path)"
