@@ -63,7 +63,7 @@ X509DefaultDur="$(prompt_input "Enter X509DefaultDur" "168h" 30)"
 DB_TYPE="$(prompt_input "Enter DBType (badgerv2, mysql or postgresql)" "badgerv2" 30)"
 
 DB_NAME="stepca"
-DB_USER="stepadmin"
+DB_USER="stepca"
 
 case "$DB_TYPE" in
 mysql)
@@ -96,6 +96,8 @@ IP="${LOCAL_IP}"
 LISTENER=":443"
 LISTENER_INSECURE=":80"
 CAConfig="$(step path)/config/ca.json"
+DefaultConfig="$(step path)/config/defaults.json"
+CAAdmin="Admin JWK"
 
 # Set different signing CA and Provisioner Passwords
 EncryptionPwdDir="$(step path)/encryption"
@@ -118,7 +120,7 @@ $STD step ca init \
   --dns="$FQDN" \
   --dns="$IP" \
   --address="$LISTENER" \
-  --provisioner="Admin JWK" \
+  --provisioner="$CAAdmin" \
   --password-file="$PwdFile" \
   --provisioner-password-file="$ProvisionerPwdFile"
 
@@ -351,6 +353,9 @@ $STD step certificate create "${PKIName} Root CA" \
   "$(step path)/secrets/root_ca_key" \
   "${FLAGS[@]}"
 
+CAFingerPrint=$(step certificate fingerprint "$(step path)/certs/root_ca.crt")
+jq --arg a "$CAFingerPrint" '.fingerprint = $a' "${DefaultConfig}" > "${DefaultConfig}_tmp" && mv "${DefaultConfig}_tmp" "${DefaultConfig}"
+
 # Generate Intermediate CA Certificate Bundle and Key
 # - Validity: 175368h (~20 Years)
 # - maxPathLen: 0 (Root -> Intermediate -> Leaf) => Intermediate CA is only allowed to issue Leaf Certificates
@@ -395,7 +400,7 @@ mkdir -p "$AdminDir"
 $STD step ca certificate step \
   "$AdminCert" \
   "$AdminKey" \
-  --provisioner="Admin JWK" \
+  --provisioner="$CAAdmin" \
   --provisioner-password-file="$ProvisionerPwdFile"
 
 $STD step ca provisioner add "$PKIProvisioner" \
@@ -475,7 +480,33 @@ EOF
   msg_ok "Created LabCA GUI Service"
   ;;
 postgresql)
-  msg_warn "tbd"
+  apt -y install git python3.13-venv
+  cd /opt
+  git clone https://github.com/damhau/stepca-web
+  cd /opt/stepca-web
+  sed -i -e 's/psycopg2/psycopg2-binary/g' /opt/stepca-web/requirements.txt
+  python3 -m venv venv
+  source venv/bin/activate
+  pip install -r /opt/stepca-web/requirements.txt
+  CAFingerPrint=$(step certificate fingerprint /etc/step-ca/certs/root_ca.crt)
+
+  cat <<EOF >/opt/stepca-web/settings.json
+{
+  "database": {
+    "host": "127.0.0.1",
+    "user": "${PG_DB_USER}",
+    "password": "${PG_DB_PASS}",
+    "name": "$PG_DB_NAME",
+    "port": 5432
+  },
+  "ca": {
+    "url": "https://step-ca-30.fritz.box",
+    "fingerprint": "${CAFingerPrint}",
+    "admin_provisioner_name": "${CAAdmin}"
+  }
+}
+EOF
+  
   ;;
 esac
 
