@@ -89,7 +89,6 @@ postgresql)
 esac
 
 msg_info "Initializing step-ca"
-
 # Initialize step-ca
 DeploymentType="standalone"
 FQDN="$(hostname -f)"
@@ -263,59 +262,11 @@ jq '.crl.renewPeriod = "16h0m0s"' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAC
 jq --arg a "https://${FQDN}${LISTENER}/crl" '.crl.idpURL = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
 jq --arg a "$LISTENER_INSECURE" '.insecureAddress = $a' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
 
-# Generate Root CA Certificate and Key
-# - Validity: 219168h (~25 Years)
-# - maxPathLen: 1 (Root -> Intermediate -> Leaf) => Only one Intermediate CA allowed below Root CA
-# - Active revocation on Intermediate CA and Leaf Certificates by the usage of build-in Certificate Revocation List (CRL)
-FLAGS=(--force
-  --template="${CARootTemplate}"
-  --not-after="219168h"
-  --password-file="${PwdFile}"
-  --set country="${PKICountry}"
-  --set organization="${PKIName}"
-  --set organizationalUnit="${PKIOrganizationalUnit}"
-  --set issuingCertificateURL="https://${FQDN}${LISTENER}/roots.pem"
-  --set crlDistributionPoints="https://${FQDN}${LISTENER}/crl")
-
-$STD step certificate create "${PKIName} Root CA" \
-  "$(step path)/certs/root_ca.crt" \
-  "$(step path)/secrets/root_ca_key" \
-  "${FLAGS[@]}"
-
-# Generate Intermediate CA Certificate Bundle and Key
-# - Validity: 175368h (~20 Years)
-# - maxPathLen: 0 (Root -> Intermediate -> Leaf) => Intermediate CA is only allowed to issue Leaf Certificates
-# - Active revocation on Leaf Certificates by the usage of build-in Certificate Revocation List (CRL)
-# - Bundle: Certificate Chain (including Root CA Certificate)
-FLAGS=(--force
-  --template="${CAIntermediateTemplate}"
-  --ca="$(step path)/certs/root_ca.crt"
-  --ca-key="$(step path)/secrets/root_ca_key"
-  --not-after="175368h"
-  --ca-password-file="${PwdFile}"
-  --password-file="${PwdFile}"
-  --bundle
-  --set country="${PKICountry}"
-  --set organization="${PKIName}"
-  --set organizationalUnit="${PKIOrganizationalUnit}"
-  --set issuingCertificateURL="https://${FQDN}${LISTENER}/roots.pem"
-  --set crlDistributionPoints="https://${FQDN}${LISTENER}/crl")
-
-$STD step certificate create "${PKIName} Intermediate CA" \
-  "$(step path)/certs/intermediate_ca.crt" \
-  "$(step path)/secrets/intermediate_ca_key" \
-  "${FLAGS[@]}"
-
-# Install Root CA Certificate to System Trust Store
-$STD step certificate install --all "$(step path)/certs/root_ca.crt"
-$STD update-ca-certificates
-
 chown -R step:step "$(step path)"
 chmod -R 700 "$(step path)"
 msg_ok "Initialized step-ca"
 
 msg_info "Start step-ca as a Daemon"
-
 # https://smallstep.com/docs/step-ca/certificate-authority-server-production/#running-step-ca-as-a-daemon
 cat <<'EOF' >/etc/systemd/system/step-ca.service
 [Unit]
@@ -373,10 +324,67 @@ WantedBy=multi-user.target
 EOF
 $STD systemctl enable -q --now step-ca
 sleep 5
+
+# Remove Provisioners from CA config
+$STD systemctl stop step-ca
+jq '.authority.provisioners = []' "${CAConfig}" > "${CAConfig}_tmp" && mv "${CAConfig}_tmp" "${CAConfig}"
+$STD systemctl start step-ca
 msg_ok "Started step-ca as a Daemon"
 
-msg_info "Configuring step-ca Admins and Provisioners\n"
+msg_info "Creating CA Root and Intermediate Certificates and Keys"
+# Generate Root CA Certificate and Key
+# - Validity: 219168h (~25 Years)
+# - maxPathLen: 1 (Root -> Intermediate -> Leaf) => Only one Intermediate CA allowed below Root CA
+# - Active revocation on Intermediate CA and Leaf Certificates by the usage of build-in Certificate Revocation List (CRL)
+FLAGS=(--force
+  --template="${CARootTemplate}"
+  --not-after="219168h"
+  --password-file="${PwdFile}"
+  --set country="${PKICountry}"
+  --set organization="${PKIName}"
+  --set organizationalUnit="${PKIOrganizationalUnit}"
+  --set issuingCertificateURL="https://${FQDN}${LISTENER}/roots.pem"
+  --set crlDistributionPoints="https://${FQDN}${LISTENER}/crl")
 
+$STD step certificate create "${PKIName} Root CA" \
+  "$(step path)/certs/root_ca.crt" \
+  "$(step path)/secrets/root_ca_key" \
+  "${FLAGS[@]}"
+
+# Generate Intermediate CA Certificate Bundle and Key
+# - Validity: 175368h (~20 Years)
+# - maxPathLen: 0 (Root -> Intermediate -> Leaf) => Intermediate CA is only allowed to issue Leaf Certificates
+# - Active revocation on Leaf Certificates by the usage of build-in Certificate Revocation List (CRL)
+# - Bundle: Certificate Chain (including Root CA Certificate)
+FLAGS=(--force
+  --template="${CAIntermediateTemplate}"
+  --ca="$(step path)/certs/root_ca.crt"
+  --ca-key="$(step path)/secrets/root_ca_key"
+  --not-after="175368h"
+  --ca-password-file="${PwdFile}"
+  --password-file="${PwdFile}"
+  --bundle
+  --set country="${PKICountry}"
+  --set organization="${PKIName}"
+  --set organizationalUnit="${PKIOrganizationalUnit}"
+  --set issuingCertificateURL="https://${FQDN}${LISTENER}/roots.pem"
+  --set crlDistributionPoints="https://${FQDN}${LISTENER}/crl")
+
+$STD step certificate create "${PKIName} Intermediate CA" \
+  "$(step path)/certs/intermediate_ca.crt" \
+  "$(step path)/secrets/intermediate_ca_key" \
+  "${FLAGS[@]}"
+
+# Install Root CA Certificate to System Trust Store
+$STD step certificate install --all "$(step path)/certs/root_ca.crt"
+$STD update-ca-certificates
+
+chown -R step:step "$(step path)"
+chmod -R 700 "$(step path)"
+$STD systemctl restart step-ca
+msg_ok "Created CA Root and Intermediate Certificates and Keys"
+
+msg_info "Configuring step-ca Admins and Provisioners\n"
 # Configure CA Super-Admin, Admins and Provisioners settings
 AdminDir="$(step path)/admins"
 AdminCert="$AdminDir/admin.crt"
