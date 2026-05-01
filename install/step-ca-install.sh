@@ -473,10 +473,36 @@ postgresql)
   python3 -m venv venv
   source venv/bin/activate
   pip install -r /opt/stepca-web/requirements.txt
-  pip install --upgrade pip && pip install -r requirements.txt
+  pip install --upgrade pip && pip install -r /opt/stepca-web/requirements.txt
   msg_ok "Installed step-ca Web Admin"
   
   msg_info "Creating step-ca Web Admin Service"
+
+ cat <<'EOF' >/opt/stepca-web/bin/start.sh
+#!/usr/bin/env bash
+
+uv run --frozen gunicorn \
+    --preload \
+    --bind 0.0.0.0:5000 \
+    --log-level=warn \
+    --umask 007 \
+    run:app
+EOF
+
+ cat <<'EOF' >/opt/stepca-web/change_admin_pwd.sh
+#!/usr/bin/env bash
+
+APP_PATH="/opt/stepca-web"
+LIB_PATH="${APP_PATH}/app/libs/auth/local_backend.py"
+
+Hash=$(uv run python -c "from werkzeug.security import generate_password_hash; import getpass; print(generate_password_hash(getpass.getpass('Password: ')))")
+
+[ -f "${LIB_PATH}_org" ] ||  cp "${LIB_PATH}" "${LIB_PATH}_org"
+#cp "${LIB_PATH}_org" "${LIB_PATH}"
+awk -F ': ' -v OFS=': ' -v var="\047${Hash}\047," '/\047password_hash\047:/ {$2 = var} 1' < "${LIB_PATH}" > "${LIB_PATH}_new"
+mv "${LIB_PATH}_new" "${LIB_PATH}"
+EOF
+
   cat <<EOF >/opt/stepca-web/settings.json
 {
   "database": {
@@ -493,6 +519,24 @@ postgresql)
   }
 }
 EOF
+
+  cat <<EOF >/etc/systemd/system/step-ca-web.service
+[Unit]
+Description=step-ca Web Admin Service
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/stepca-web
+EnvironmentFile=/opt/stepca-web/.env
+ExecStart=/opt/stepca-web/bin/start.sh
+Restart=on-abnormal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  chmod u+x /opt/stepca-web/bin/*
   msg_ok "Created step-ca Web Admin Service"
   ;;
 esac
