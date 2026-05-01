@@ -521,14 +521,17 @@ EOF
   cat <<EOF >/etc/systemd/system/step-ca-web.service
 [Unit]
 Description=step-ca Web Admin Service
-After=network.target
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=30
+StartLimitBurst=3
 
 [Service]
 Type=simple
 WorkingDirectory=/opt/stepca-web
-EnvironmentFile=/opt/stepca-web/.env
 ExecStart=/opt/stepca-web/bin/start.sh
-Restart=on-abnormal
+Restart=on-failure
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
@@ -542,6 +545,7 @@ EOF
     | jq > jwk_key.json
   
   /opt/stepca-web/bin/change_admin_pwd.sh
+  systemctl enable -q --now step-ca-web.service
   msg_ok "Created step-ca Web Admin Service"
   ;;
 esac
