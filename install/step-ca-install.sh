@@ -20,6 +20,18 @@ setup_deb822_repo \
   "debs" \
   "main"
 
+DB_TYPE="$(prompt_input "Enter step-ca DBType (badgerv2, mysql or postgresql)" "badgerv2" 30)"
+case "$DB_TYPE" in
+mysql)
+  setup_mariadb
+  MARIADB_DB_NAME="step_ca" MARIADB_DB_USER="step-ca" setup_mariadb_db
+  ;;
+postgresql)
+  setup_postgresql
+  PG_DB_NAME="step_ca" PG_DB_USER="step-ca" setup_postgresql_db
+  ;;
+esac
+
 msg_info "Installing step-ca and step-cli"
 $STD apt install -y step-ca step-cli
 
@@ -59,34 +71,6 @@ AcmeProvisioner="$(prompt_input "Enter AcmeProvisioner" "acme@$DomainName" 30)"
 X509MinDur="$(prompt_input "Enter X509MinDur" "48h" 30)"
 X509MaxDur="$(prompt_input "Enter X509MaxDur" "87600h" 30)"
 X509DefaultDur="$(prompt_input "Enter X509DefaultDur" "168h" 30)"
-
-DB_TYPE="$(prompt_input "Enter DBType (badgerv2, mysql or postgresql)" "badgerv2" 30)"
-
-DB_NAME="stepca"
-DB_USER="stepca"
-
-case "$DB_TYPE" in
-mysql)
-  setup_mariadb
-  MARIADB_DB_NAME="$DB_NAME" MARIADB_DB_USER="$DB_USER" setup_mariadb_db
-  
-  msg_info "Setup MariaDB"
-  echo "MariaDB DB_NAME: $MARIADB_DB_NAME" > "/root/db_config.txt"
-  echo "MariaDB DB_USER: $MARIADB_DB_USER" >> "/root/db_config.txt"
-  echo "MariaDB DB_PASSWORD: $MARIADB_DB_PASS" >> "/root/db_config.txt"
-  msg_ok "Setup MariaDB"
-  ;;
-postgresql)
-  setup_postgresql
-  PG_DB_NAME="$DB_NAME" PG_DB_USER="$DB_USER" setup_postgresql_db
-
-  msg_info "Setup PostgreSQL"
-  echo "PostgreSQL DB_NAME: $PG_DB_NAME" > "/root/db_config.txt"
-  echo "PostgreSQL DB_USER: $PG_DB_USER" >> "/root/db_config.txt"
-  echo "PostgreSQL DB_PASSWORD: $PG_DB_PASS" >> "/root/db_config.txt"
-  msg_ok "Setup PostgreSQL"
-  ;;
-esac
 
 msg_info "Initializing step-ca"
 # Initialize step-ca
@@ -449,7 +433,7 @@ badgerv2)
   ;;
 mysql)
   fetch_and_deploy_gh_release "labca-gui" "hakwerk/labca" "binary"
-  
+  msg_info "Creating LabCA GUI Service"
   mkdir -p /etc/labca
   cat <<EOF >/etc/labca/config.json
 {
@@ -457,7 +441,6 @@ mysql)
 }
 EOF
 
-  msg_info "Creating LabCA GUI Service"
   cat <<EOF >/etc/systemd/system/labca.service
 [Unit]
 Description=LabCA GUI Service
@@ -480,7 +463,9 @@ EOF
   msg_ok "Created LabCA GUI Service"
   ;;
 postgresql)
-  apt -y install git python3.13-venv
+  setup_uv
+  msg_info "Installing step-ca Web Admin"
+  apt -y install git python3-venv
   cd /opt
   git clone https://github.com/damhau/stepca-web
   cd /opt/stepca-web
@@ -488,8 +473,10 @@ postgresql)
   python3 -m venv venv
   source venv/bin/activate
   pip install -r /opt/stepca-web/requirements.txt
-  CAFingerPrint=$(step certificate fingerprint /etc/step-ca/certs/root_ca.crt)
-
+  pip install --upgrade pip && pip install -r requirements.txt
+  msg_info "Installed step-ca Web Admin"
+  
+  msg_info "Creating step-ca Web Admin Service"
   cat <<EOF >/opt/stepca-web/settings.json
 {
   "database": {
@@ -506,7 +493,7 @@ postgresql)
   }
 }
 EOF
-  
+  msg_ok "Created step-ca Web Admin Service"
   ;;
 esac
 
