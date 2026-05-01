@@ -468,6 +468,7 @@ postgresql)
   apt -y install git python3-venv
   cd /opt
   git clone https://github.com/damhau/stepca-web
+  mkdir -p /opt/stepca-web/bin
   cd /opt/stepca-web
   sed -i -e 's/psycopg2/psycopg2-binary/g' /opt/stepca-web/requirements.txt
   python3 -m venv venv
