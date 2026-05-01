@@ -465,7 +465,8 @@ EOF
 postgresql)
   setup_uv
   msg_info "Installing step-ca Web Admin"
-  apt -y install git python3-venv
+  #apt -y install git python3-pip python3-venv
+  apt -y install git python3-pip
   cd /opt
   git clone https://github.com/damhau/stepca-web
   mkdir -p /opt/stepca-web/bin
@@ -473,8 +474,7 @@ postgresql)
   sed -i -e 's/psycopg2/psycopg2-binary/g' /opt/stepca-web/requirements.txt
   #python3 -m venv venv
   #source venv/bin/activate
-  pip install -r /opt/stepca-web/requirements.txt
-  pip install --upgrade pip && pip install -r /opt/stepca-web/requirements.txt
+  PIP_ROOT_USER_ACTION=ignore pip install -r /opt/stepca-web/requirements.txt
   msg_ok "Installed step-ca Web Admin"
   
   msg_info "Creating step-ca Web Admin Service"
