@@ -471,8 +471,8 @@ postgresql)
   mkdir -p /opt/stepca-web/bin
   cd /opt/stepca-web
   sed -i -e 's/psycopg2/psycopg2-binary/g' /opt/stepca-web/requirements.txt
-  python3 -m venv venv
-  source venv/bin/activate
+  #python3 -m venv venv
+  #source venv/bin/activate
   pip install -r /opt/stepca-web/requirements.txt
   pip install --upgrade pip && pip install -r /opt/stepca-web/requirements.txt
   msg_ok "Installed step-ca Web Admin"
