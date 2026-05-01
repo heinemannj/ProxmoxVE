@@ -465,15 +465,12 @@ EOF
 postgresql)
   setup_uv
   msg_info "Installing step-ca Web Admin"
-  #apt -y install git python3-pip python3-venv
   apt -y install git python3-pip
   cd /opt
   git clone https://github.com/damhau/stepca-web
   mkdir -p /opt/stepca-web/bin
   cd /opt/stepca-web
   sed -i -e 's/psycopg2/psycopg2-binary/g' /opt/stepca-web/requirements.txt
-  #python3 -m venv venv
-  #source venv/bin/activate
   PIP_ROOT_USER_ACTION=ignore pip install -r /opt/stepca-web/requirements.txt
   msg_ok "Installed step-ca Web Admin"
   
@@ -490,7 +487,7 @@ AUTH_BACKEND=local uv run --frozen gunicorn \
   run:app
 EOF
 
- cat <<'EOF' >/opt/stepca-web/change_admin_pwd.sh
+ cat <<'EOF' >/opt/stepca-web/bin/change_admin_pwd.sh
 #!/usr/bin/env bash
 
 APP_PATH="/opt/stepca-web"
@@ -537,7 +534,14 @@ Restart=on-abnormal
 WantedBy=multi-user.target
 EOF
 
-  chmod u+x /opt/stepca-web/bin/*
+  chmod 755 /opt/stepca-web/bin/*
+  
+  step ca provisioner list \
+    | jq -r '.[] | select(.name == "Admin JWK") | .encryptedKey' \
+    | step crypto jwe decrypt --password-file=/etc/step-ca/encryption/provisioner.pwd \
+    | jq > jwk_key.json
+  
+  /opt/stepca-web/bin/change_admin_pwd.sh
   msg_ok "Created step-ca Web Admin Service"
   ;;
 esac
