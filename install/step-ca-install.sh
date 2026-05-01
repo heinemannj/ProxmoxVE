@@ -474,7 +474,7 @@ postgresql)
   source venv/bin/activate
   pip install -r /opt/stepca-web/requirements.txt
   pip install --upgrade pip && pip install -r requirements.txt
-  msg_info "Installed step-ca Web Admin"
+  msg_ok "Installed step-ca Web Admin"
   
   msg_info "Creating step-ca Web Admin Service"
   cat <<EOF >/opt/stepca-web/settings.json
