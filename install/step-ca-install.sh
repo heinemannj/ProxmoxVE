@@ -24,11 +24,11 @@ DB_TYPE="$(prompt_input "Enter step-ca DBType (badgerv2, mysql or postgresql)" "
 case "$DB_TYPE" in
 mysql)
   setup_mariadb
-  MARIADB_DB_NAME="step_ca" MARIADB_DB_USER="step-ca" setup_mariadb_db
+  MARIADB_DB_NAME="step_ca" MARIADB_DB_USER="step_ca" setup_mariadb_db
   ;;
 postgresql)
   setup_postgresql
-  PG_DB_NAME="step_ca" PG_DB_USER="step-ca" setup_postgresql_db
+  PG_DB_NAME="step_ca" PG_DB_USER="step_ca" setup_postgresql_db
   ;;
 esac
 
