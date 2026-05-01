@@ -481,12 +481,12 @@ postgresql)
  cat <<'EOF' >/opt/stepca-web/bin/start.sh
 #!/usr/bin/env bash
 
-uv run --frozen gunicorn \
-    --preload \
-    --bind 0.0.0.0:5000 \
-    --log-level=warn \
-    --umask 007 \
-    run:app
+AUTH_BACKEND=local uv run --frozen gunicorn \
+  --preload \
+  --bind 0.0.0.0:5000 \
+  --log-level=warn \
+  --umask 007 \
+  run:app
 EOF
 
  cat <<'EOF' >/opt/stepca-web/change_admin_pwd.sh
