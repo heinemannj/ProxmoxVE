@@ -497,7 +497,7 @@ APP_PATH="/opt/stepca-web"
 LIB_PATH="${APP_PATH}/app/libs/auth/local_backend.py"
 
 echo "Change password for 'StepCA Web Admin' user 'admin'"
-Hash=$(uv run python -c "from werkzeug.security import generate_password_hash; import getpass; print(generate_password_hash(getpass.getpass('New Password: ')))>
+Hash=$(uv run python -c "from werkzeug.security import generate_password_hash; import getpass; print(generate_password_hash(getpass.getpass('New Password: ')))")
 
 [ -f "${LIB_PATH}_org" ] ||  cp "${LIB_PATH}" "${LIB_PATH}_org"
 awk -F ': ' -v OFS=': ' -v var="\047${Hash}\047," '/\047password_hash\047:/ {$2 = var} 1' < "${LIB_PATH}" > "${LIB_PATH}_new"
