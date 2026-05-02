@@ -539,6 +539,7 @@ StartLimitBurst=3
 [Service]
 Type=simple
 WorkingDirectory=/opt/stepca-web
+EnvironmentFile=/opt/stepca-web/.env
 ExecStart=/opt/stepca-web/bin/stepca-web.sh
 Restart=on-failure
 RestartSec=5
