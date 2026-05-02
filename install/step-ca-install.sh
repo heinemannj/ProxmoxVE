@@ -469,6 +469,7 @@ postgresql)
   cd /opt
   git clone https://github.com/damhau/stepca-web
   mkdir -p /opt/stepca-web/bin
+  mkdir -p /etc/stepca-web
   cd /opt/stepca-web
   sed -i -e 's/psycopg2/psycopg2-binary/g' /opt/stepca-web/requirements.txt
   PIP_ROOT_USER_ACTION=ignore pip install -r /opt/stepca-web/requirements.txt
@@ -476,9 +477,10 @@ postgresql)
   
   msg_info "Creating step-ca Web Admin Service"
 
- cat <<'EOF' >/opt/stepca-web/bin/start.sh
+ cat <<'EOF' >/opt/stepca-web/bin/stepca-web.sh
 #!/usr/bin/env bash
 
+cd /opt/stepca-web
 AUTH_BACKEND=local uv run --frozen gunicorn \
   --preload \
   --bind 0.0.0.0:5000 \
@@ -487,16 +489,16 @@ AUTH_BACKEND=local uv run --frozen gunicorn \
   run:app
 EOF
 
- cat <<'EOF' >/opt/stepca-web/bin/change_admin_pwd.sh
+ cat <<'EOF' >/opt/stepca-web/bin/stepca-web-passwd.sh
 #!/usr/bin/env bash
 
 APP_PATH="/opt/stepca-web"
 LIB_PATH="${APP_PATH}/app/libs/auth/local_backend.py"
 
-Hash=$(uv run python -c "from werkzeug.security import generate_password_hash; import getpass; print(generate_password_hash(getpass.getpass('Password: ')))")
+echo "Change password for 'StepCA Web Admin' user 'admin'"
+Hash=$(uv run python -c "from werkzeug.security import generate_password_hash; import getpass; print(generate_password_hash(getpass.getpass('New Password: ')))>
 
 [ -f "${LIB_PATH}_org" ] ||  cp "${LIB_PATH}" "${LIB_PATH}_org"
-#cp "${LIB_PATH}_org" "${LIB_PATH}"
 awk -F ': ' -v OFS=': ' -v var="\047${Hash}\047," '/\047password_hash\047:/ {$2 = var} 1' < "${LIB_PATH}" > "${LIB_PATH}_new"
 mv "${LIB_PATH}_new" "${LIB_PATH}"
 EOF
@@ -529,7 +531,7 @@ StartLimitBurst=3
 [Service]
 Type=simple
 WorkingDirectory=/opt/stepca-web
-ExecStart=/opt/stepca-web/bin/start.sh
+ExecStart=/opt/stepca-web/bin/stepca-web.sh
 Restart=on-failure
 RestartSec=5
 
@@ -538,13 +540,17 @@ WantedBy=multi-user.target
 EOF
 
   chmod 755 /opt/stepca-web/bin/*
+  ln -s /opt/stepca-web/settings.json /etc/stepca-web/settings.json
   
   step ca provisioner list \
     | jq -r '.[] | select(.name == "Admin JWK") | .encryptedKey' \
     | step crypto jwe decrypt --password-file=/etc/step-ca/encryption/provisioner.pwd \
     | jq > jwk_key.json
+
   
-  /opt/stepca-web/bin/change_admin_pwd.sh
+  # Change local default admin password
+  /opt/stepca-web/bin/stepca-web-passwd.sh
+  
   systemctl enable -q --now step-ca-web.service
   msg_ok "Created step-ca Web Admin Service"
   ;;
