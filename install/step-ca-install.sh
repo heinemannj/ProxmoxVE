@@ -554,7 +554,7 @@ RestartSec=5
 WantedBy=multi-user.target
 EOF
 
-  chmod 755 "$APP_PATH/bin/*"
+  chmod 755 ${APP_PATH}/bin/*
   ln -s "$APP_PATH/settings.json" /etc/stepca-web/settings.json
   
   step ca provisioner list \
