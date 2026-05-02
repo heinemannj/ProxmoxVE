@@ -466,18 +466,20 @@ postgresql)
   setup_uv
   msg_info "Installing step-ca Web Admin"
   apt -y install git python3-pip
-  cd /opt
-  git clone https://github.com/damhau/stepca-web
-  mkdir -p /opt/stepca-web/bin
+
+  APP_PATH="/opt/stepca-web"
+  git clone https://github.com/damhau/stepca-web "$APP_PATH"
+  cd "$APP_PATH"
+  mkdir -p "$APP_PATH/bin"
   mkdir -p /etc/stepca-web
-  cd /opt/stepca-web
-  sed -i -e 's/psycopg2/psycopg2-binary/g' /opt/stepca-web/requirements.txt
-  PIP_ROOT_USER_ACTION=ignore pip install -r /opt/stepca-web/requirements.txt
+
+  sed -i -e 's/psycopg2/psycopg2-binary/g' "$APP_PATH/requirements.txt"
+  PIP_ROOT_USER_ACTION=ignore pip install -r "$APP_PATH/requirements.txt"
   msg_ok "Installed step-ca Web Admin"
   
   msg_info "Creating step-ca Web Admin Service"
 
-  cat <<'EOF' >/opt/stepca-web/bin/stepca-web.sh
+  cat <<'EOF' >"$APP_PATH/bin/stepca-web.sh"
 #!/usr/bin/env bash
 
 AUTH_BACKEND=local uv run --frozen gunicorn \
@@ -488,7 +490,7 @@ AUTH_BACKEND=local uv run --frozen gunicorn \
   run:app
 EOF
 
-  cat <<'EOF' >/opt/stepca-web/bin/stepca-web-passwd.sh
+  cat <<'EOF' >"$APP_PATH/bin/stepca-web-passwd.sh"
 #!/usr/bin/env bash
 
 APP_PATH="/opt/stepca-web"
@@ -502,7 +504,7 @@ awk -F ': ' -v OFS=': ' -v var="\047${Hash}\047," '/\047password_hash\047:/ {$2 
 mv "${LIB_PATH}_new" "${LIB_PATH}"
 EOF
 
-  cat <<EOF >/opt/stepca-web/settings.json
+  cat <<EOF >"$APP_PATH/settings.json"
 {
   "database": {
     "host": "127.0.0.1",
@@ -515,17 +517,22 @@ EOF
     "url": "https://${FQDN}",
     "fingerprint": "${CAFingerPrint}",
     "admin_provisioner_name": "${CAAdmin}"
+  },
+  "app": {
+    "path": "$APP_PATH",
+    "url": "http://${LOCAL_IP}:5000"
   }
 }
 EOF
 
-  cat <<EOF >/opt/stepca-web/.env
+  cat <<EOF >"$APP_PATH/.env"
 FLASK_ENV=production
 GUNICORN_WORKERS=1
+APP_PATH=${APP_PATH}
 APP_URL=http://${LOCAL_IP}:5000
 DISABLE_BUILTIN_AUTH=false
 LOG_LEVEL=WARN
-APP_VERSION=v$(get_latest_github_release "damhau/stepca-web")
+#APP_VERSION=v$(get_latest_github_release "damhau/stepca-web")
 EOF
 
   cat <<EOF >/etc/systemd/system/step-ca-web.service
@@ -538,9 +545,9 @@ StartLimitBurst=3
 
 [Service]
 Type=simple
-WorkingDirectory=/opt/stepca-web
-EnvironmentFile=/opt/stepca-web/.env
-ExecStart=/opt/stepca-web/bin/stepca-web.sh
+WorkingDirectory=${APP_PATH}
+EnvironmentFile=${APP_PATH}/.env
+ExecStart=${APP_PATH}/bin/stepca-web.sh
 Restart=on-failure
 RestartSec=5
 
@@ -548,16 +555,16 @@ RestartSec=5
 WantedBy=multi-user.target
 EOF
 
-  chmod 755 /opt/stepca-web/bin/*
-  ln -s /opt/stepca-web/settings.json /etc/stepca-web/settings.json
+  chmod 755 "$APP_PATH/bin/*"
+  ln -s "$APP_PATH/settings.json" /etc/stepca-web/settings.json
   
   step ca provisioner list \
     | jq -r '.[] | select(.name == "Admin JWK") | .encryptedKey' \
-    | step crypto jwe decrypt --password-file=/etc/step-ca/encryption/provisioner.pwd \
+    | step crypto jwe decrypt --password-file="$ProvisionerPwdFile" \
     | jq > jwk_key.json
 
   # Change local default admin password
-  /opt/stepca-web/bin/stepca-web-passwd.sh
+  "$APP_PATH/bin/stepca-web-passwd.sh"
   
   $STD systemctl enable -q --now step-ca-web.service
   msg_ok "Created step-ca Web Admin Service"
