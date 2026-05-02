@@ -532,7 +532,6 @@ APP_PATH=${APP_PATH}
 APP_URL=http://${LOCAL_IP}:5000
 DISABLE_BUILTIN_AUTH=false
 LOG_LEVEL=WARN
-#APP_VERSION=v$(get_latest_github_release "damhau/stepca-web")
 EOF
 
   cat <<EOF >/etc/systemd/system/step-ca-web.service
