@@ -477,7 +477,7 @@ postgresql)
   
   msg_info "Creating step-ca Web Admin Service"
 
- cat <<'EOF' >/opt/stepca-web/bin/stepca-web.sh
+  cat <<'EOF' >/opt/stepca-web/bin/stepca-web.sh
 #!/usr/bin/env bash
 
 AUTH_BACKEND=local uv run --frozen gunicorn \
@@ -488,7 +488,7 @@ AUTH_BACKEND=local uv run --frozen gunicorn \
   run:app
 EOF
 
- cat <<'EOF' >/opt/stepca-web/bin/stepca-web-passwd.sh
+  cat <<'EOF' >/opt/stepca-web/bin/stepca-web-passwd.sh
 #!/usr/bin/env bash
 
 APP_PATH="/opt/stepca-web"
