@@ -519,6 +519,15 @@ EOF
 }
 EOF
 
+  cat <<EOF >/opt/stepca-web/.env
+FLASK_ENV=production
+GUNICORN_WORKERS=1
+APP_URL=http://${LOCAL_IP}:5000
+DISABLE_BUILTIN_AUTH=false
+LOG_LEVEL=WARN
+APP_VERSION=v$(get_latest_github_release "damhau/stepca-web")
+EOF
+
   cat <<EOF >/etc/systemd/system/step-ca-web.service
 [Unit]
 Description=step-ca Web Admin Service
