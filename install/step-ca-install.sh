@@ -480,7 +480,6 @@ postgresql)
  cat <<'EOF' >/opt/stepca-web/bin/stepca-web.sh
 #!/usr/bin/env bash
 
-cd /opt/stepca-web
 AUTH_BACKEND=local uv run --frozen gunicorn \
   --preload \
   --bind 0.0.0.0:5000 \
@@ -547,11 +546,10 @@ EOF
     | step crypto jwe decrypt --password-file=/etc/step-ca/encryption/provisioner.pwd \
     | jq > jwk_key.json
 
-  
   # Change local default admin password
   /opt/stepca-web/bin/stepca-web-passwd.sh
   
-  systemctl enable -q --now step-ca-web.service
+  $STD systemctl enable -q --now step-ca-web.service
   msg_ok "Created step-ca Web Admin Service"
   ;;
 esac
