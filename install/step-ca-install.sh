@@ -477,7 +477,7 @@ postgresql)
   PIP_ROOT_USER_ACTION=ignore pip install -r "$APP_PATH/requirements.txt"
   msg_ok "Installed step-ca Web Admin"
   
-  msg_info "Creating step-ca Web Admin Service"
+  msg_info "Creating step-ca Web Admin Service\n"
 
   cat <<'EOF' >"$APP_PATH/bin/stepca-web.sh"
 #!/usr/bin/env bash
@@ -563,7 +563,8 @@ EOF
     | jq > jwk_key.json
 
   # Change local default admin password
-  "$APP_PATH/bin/stepca-web-passwd.sh"
+  echo
+  ${APP_PATH}/bin/stepca-web-passwd.sh
   
   $STD systemctl enable -q --now step-ca-web.service
   msg_ok "Created step-ca Web Admin Service"
