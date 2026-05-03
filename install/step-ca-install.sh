@@ -468,10 +468,11 @@ postgresql)
   apt -y install git python3-pip
 
   APP_PATH="/opt/stepca-web"
+  CONF_PATH="/etc/stepca-web"
   git clone https://github.com/damhau/stepca-web "$APP_PATH"
   cd "$APP_PATH"
   mkdir -p "$APP_PATH/bin"
-  mkdir -p /etc/stepca-web
+  mkdir -p "$CONF_PATH"
 
   sed -i -e 's/psycopg2/psycopg2-binary/g' "$APP_PATH/requirements.txt"
   PIP_ROOT_USER_ACTION=ignore pip install -r "$APP_PATH/requirements.txt"
@@ -504,7 +505,7 @@ awk -F ': ' -v OFS=': ' -v var="\047${Hash}\047," '/\047password_hash\047:/ {$2 
 mv "${LIB_PATH}_new" "${LIB_PATH}"
 EOF
 
-  cat <<EOF >"$APP_PATH/settings.json"
+  cat <<EOF >"$CONF_PATH/settings.json"
 {
   "database": {
     "host": "127.0.0.1",
@@ -520,12 +521,13 @@ EOF
   },
   "app": {
     "path": "$APP_PATH",
-    "url": "http://${LOCAL_IP}:5000"
+    "url": "http://${LOCAL_IP}:5000",
+    "config": "$CONF_PATH"
   }
 }
 EOF
 
-  cat <<EOF >"$APP_PATH/.env"
+  cat <<EOF >"$CONF_PATH/.env"
 FLASK_ENV=production
 GUNICORN_WORKERS=1
 APP_PATH=${APP_PATH}
@@ -545,7 +547,7 @@ StartLimitBurst=3
 [Service]
 Type=simple
 WorkingDirectory=${APP_PATH}
-EnvironmentFile=${APP_PATH}/.env
+EnvironmentFile=${CONF_PATH}/.env
 ExecStart=${APP_PATH}/bin/stepca-web.sh
 Restart=on-failure
 RestartSec=5
@@ -553,14 +555,15 @@ RestartSec=5
 [Install]
 WantedBy=multi-user.target
 EOF
-
-  chmod 755 ${APP_PATH}/bin/*
-  ln -s "$APP_PATH/settings.json" /etc/stepca-web/settings.json
-  
+ 
   step ca provisioner list \
     | jq -r '.[] | select(.name == "Admin JWK") | .encryptedKey' \
     | step crypto jwe decrypt --password-file="$ProvisionerPwdFile" \
-    | jq > jwk_key.json
+    | jq > $CONF_PATH/jwk_key.json
+
+  chmod 755 ${APP_PATH}/bin/*
+  ln -s "$CONF_PATH/settings.json" "$APP_PATH/settings.json"
+  ln -s "$CONF_PATH/jwk_key.json" "$APP_PATH/jwk_key.json"
 
   # Change local default admin password
   echo
