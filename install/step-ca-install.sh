@@ -465,31 +465,22 @@ EOF
 postgresql)
   setup_uv
   msg_info "Installing step-ca Web Admin"
-  apt -y install git python3-pip
+  #apt -y install git python3-pip
+  apt -y install git
 
   APP_PATH="/opt/stepca-web"
   CONF_PATH="/etc/stepca-web"
+  BIND_PORT=5000
   git clone https://github.com/damhau/stepca-web "$APP_PATH"
   cd "$APP_PATH"
   mkdir -p "$APP_PATH/bin"
   mkdir -p "$CONF_PATH"
 
   sed -i -e 's/psycopg2/psycopg2-binary/g' "$APP_PATH/requirements.txt"
-  PIP_ROOT_USER_ACTION=ignore pip install -r "$APP_PATH/requirements.txt"
+  PIP_ROOT_USER_ACTION=ignore uv pip install -r "$APP_PATH/requirements.txt"
   msg_ok "Installed step-ca Web Admin"
   
   msg_info "Creating step-ca Web Admin Service\n"
-
-  cat <<'EOF' >"$APP_PATH/bin/stepca-web.sh"
-#!/usr/bin/env bash
-
-AUTH_BACKEND=local uv run --frozen gunicorn \
-  --preload \
-  --bind 0.0.0.0:5000 \
-  --log-level=warn \
-  --umask 007 \
-  run:app
-EOF
 
   cat <<'EOF' >"$APP_PATH/bin/stepca-web-passwd.sh"
 #!/usr/bin/env bash
@@ -521,19 +512,24 @@ EOF
   },
   "app": {
     "path": "$APP_PATH",
-    "url": "http://${LOCAL_IP}:5000",
+    "url": "http://${FQDN}:${BIND_PORT}",
     "config": "$CONF_PATH"
   }
 }
 EOF
 
-  cat <<EOF >"$CONF_PATH/.env"
-FLASK_ENV=production
-GUNICORN_WORKERS=1
-APP_PATH=${APP_PATH}
-APP_URL=http://${LOCAL_IP}:5000
-DISABLE_BUILTIN_AUTH=false
-LOG_LEVEL=WARN
+  cat <<EOF >"$CONF_PATH/settings.env"
+APP_PATH="${APP_PATH}"
+APP_URL="http://${FQDN}:${BIND_PORT}"
+DB_HOST="127.0.0.1"
+DB_USER="${PG_DB_USER}"
+DB_PASSWORD="${PG_DB_PASS}"
+DB_NAME="$PG_DB_NAME"
+DB_PORT=5432
+CA_URL="https://${FQDN}"
+CA_FINGERPRINT="${CAFingerPrint}"
+CA_ADMIN_PROVISIONER_NAME="${CAAdmin}"
+AUTH_BACKEND="local"
 EOF
 
   cat <<EOF >/etc/systemd/system/step-ca-web.service
@@ -547,8 +543,13 @@ StartLimitBurst=3
 [Service]
 Type=simple
 WorkingDirectory=${APP_PATH}
-EnvironmentFile=${CONF_PATH}/.env
-ExecStart=${APP_PATH}/bin/stepca-web.sh
+EnvironmentFile=${CONF_PATH}/settings.env
+ExecStart=uv run --frozen gunicorn run:app \
+  --preload \
+  --bind 0.0.0.0:${BIND_PORT} \
+  --workers=1 \
+  --log-level=warning \
+  --umask 007
 Restart=on-failure
 RestartSec=5
 
