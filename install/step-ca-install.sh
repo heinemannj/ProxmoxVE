@@ -465,8 +465,8 @@ EOF
 postgresql)
   setup_uv
   msg_info "Installing step-ca Web Admin"
-  #apt -y install git python3-pip
-  apt -y install git
+  #apt install -y git python3-pip
+  $STD apt install -y git nginx
 
   APP_PATH="/opt/stepca-web"
   CONF_PATH="/etc/stepca-web"
@@ -521,6 +521,8 @@ EOF
   cat <<EOF >"$CONF_PATH/settings.env"
 APP_PATH="${APP_PATH}"
 APP_URL="http://${FQDN}:${BIND_PORT}"
+APP_CONFIG="${CONF_PATH}/settings.env"
+LOG_LEVEL="warning"
 DB_HOST="127.0.0.1"
 DB_USER="${PG_DB_USER}"
 DB_PASSWORD="${PG_DB_PASS}"
@@ -530,6 +532,12 @@ CA_URL="https://${FQDN}"
 CA_FINGERPRINT="${CAFingerPrint}"
 CA_ADMIN_PROVISIONER_NAME="${CAAdmin}"
 AUTH_BACKEND="local"
+LDAP_URL=""
+LDAP_BASE_DN=""
+LDAP_DOMAIN=""
+LDAP_USER_SEARCH_FILTER=""
+LDAP_USER_SEARCH_BASE=""
+LDAP_REQUIRED_GROUP_DN=""
 EOF
 
   cat <<EOF >/etc/systemd/system/step-ca-web.service
@@ -547,7 +555,7 @@ EnvironmentFile=${CONF_PATH}/settings.env
 ExecStart=uv run --frozen gunicorn run:app \
   --preload \
   --bind 0.0.0.0:${BIND_PORT} \
-  --workers=1 \
+  --workers=2 \
   --log-level=warning \
   --umask 007
 Restart=on-failure
