@@ -477,7 +477,8 @@ postgresql)
   mkdir -p "$CONF_PATH"
 
   sed -i -e 's/psycopg2/psycopg2-binary/g' "$APP_PATH/requirements.txt"
-  PIP_ROOT_USER_ACTION=ignore uv pip install -r "$APP_PATH/requirements.txt"
+  echo "flask-htpasswd" > "$APP_PATH/requirements.txt"
+  uv pip install --system -r "$APP_PATH/requirements.txt"
   msg_ok "Installed step-ca Web Admin"
   
   msg_info "Creating step-ca Web Admin Service\n"
