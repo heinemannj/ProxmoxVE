@@ -466,7 +466,7 @@ postgresql)
   setup_uv
   msg_info "Installing step-ca Web Admin"
   #apt install -y git python3-pip
-  $STD apt install -y git nginx
+  $STD apt install -y git nginx apache2-utils
 
   APP_PATH="/opt/stepca-web"
   CONF_PATH="/etc/stepca-web"
