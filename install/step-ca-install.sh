@@ -466,105 +466,41 @@ postgresql)
   setup_uv
   msg_info "Installing step-ca Web Admin"
   #apt install -y git python3-pip
-  $STD apt install -y git nginx apache2-utils
+  $STD apt install -y git nginx
 
   APP_PATH="/opt/stepca-web"
   CONF_PATH="/etc/stepca-web"
+  SETTINGS_ENV="${CONF_PATH}/settings.env"
+  SETTINGS_JSON="${CONF_PATH}/settings.json"
   BIND_PORT=5000
-  git clone https://github.com/damhau/stepca-web "$APP_PATH"
+  
+  git clone https://github.com/heinemannj/stepca-web "$APP_PATH"
   cd "$APP_PATH"
-  mkdir -p "$APP_PATH/bin"
-  mkdir -p "$CONF_PATH"
-
-  sed -i -e 's/psycopg2/psycopg2-binary/g' "$APP_PATH/requirements.txt"
-  echo "flask-htpasswd" > "$APP_PATH/requirements.txt"
   uv pip install --system -r "$APP_PATH/requirements.txt"
   msg_ok "Installed step-ca Web Admin"
   
   msg_info "Creating step-ca Web Admin Service\n"
 
-  cat <<'EOF' >"$APP_PATH/bin/stepca-web-passwd.sh"
-#!/usr/bin/env bash
+  mkdir -p "$CONF_PATH"
+  cp etc/stepca-web/settings.env ${SETTINGS_ENV}
+  cp etc/stepca-web/settings.json ${SETTINGS_JSON}
+  cp etc/systemd/system/step-ca-web.service /etc/systemd/system/step-ca-web.service
 
-APP_PATH="/opt/stepca-web"
-LIB_PATH="${APP_PATH}/app/libs/auth/local_backend.py"
+  sed -i "s/APP_PATH=/APP_PATH=${APP_PATH}/" ${SETTINGS_ENV}
+  sed -i "s/APP_CONF=/APP_CONF=${CONF_PATH}/" ${SETTINGS_ENV}
+  sed -i "s/APP_URL=/APP_URL=http://${FQDN}:${BIND_PORT}/" ${SETTINGS_ENV}  
 
-echo "Change password for 'StepCA Web Admin' user 'admin'"
-Hash=$(uv run python -c "from werkzeug.security import generate_password_hash; import getpass; print(generate_password_hash(getpass.getpass('New Password: ')))")
-
-[ -f "${LIB_PATH}_org" ] ||  cp "${LIB_PATH}" "${LIB_PATH}_org"
-awk -F ': ' -v OFS=': ' -v var="\047${Hash}\047," '/\047password_hash\047:/ {$2 = var} 1' < "${LIB_PATH}" > "${LIB_PATH}_new"
-mv "${LIB_PATH}_new" "${LIB_PATH}"
-EOF
-
-  cat <<EOF >"$CONF_PATH/settings.json"
-{
-  "database": {
-    "host": "127.0.0.1",
-    "user": "${PG_DB_USER}",
-    "password": "${PG_DB_PASS}",
-    "name": "$PG_DB_NAME",
-    "port": 5432
-  },
-  "ca": {
-    "url": "https://${FQDN}",
-    "fingerprint": "${CAFingerPrint}",
-    "admin_provisioner_name": "${CAAdmin}"
-  },
-  "app": {
-    "path": "$APP_PATH",
-    "url": "http://${FQDN}:${BIND_PORT}",
-    "config": "$CONF_PATH"
-  }
-}
-EOF
-
-  cat <<EOF >"$CONF_PATH/settings.env"
-APP_PATH="${APP_PATH}"
-APP_URL="http://${FQDN}:${BIND_PORT}"
-APP_CONFIG="${CONF_PATH}/settings.env"
-LOG_LEVEL="warning"
-DB_HOST="127.0.0.1"
-DB_USER="${PG_DB_USER}"
-DB_PASSWORD="${PG_DB_PASS}"
-DB_NAME="$PG_DB_NAME"
-DB_PORT=5432
-CA_URL="https://${FQDN}"
-CA_FINGERPRINT="${CAFingerPrint}"
-CA_ADMIN_PROVISIONER_NAME="${CAAdmin}"
-AUTH_BACKEND="local"
-LDAP_URL=""
-LDAP_BASE_DN=""
-LDAP_DOMAIN=""
-LDAP_USER_SEARCH_FILTER=""
-LDAP_USER_SEARCH_BASE=""
-LDAP_REQUIRED_GROUP_DN=""
-EOF
-
-  cat <<EOF >/etc/systemd/system/step-ca-web.service
-[Unit]
-Description=step-ca Web Admin Service
-After=network-online.target
-Wants=network-online.target
-StartLimitIntervalSec=30
-StartLimitBurst=3
-
-[Service]
-Type=simple
-WorkingDirectory=${APP_PATH}
-EnvironmentFile=${CONF_PATH}/settings.env
-ExecStart=uv run --frozen gunicorn run:app \
-  --preload \
-  --bind 0.0.0.0:${BIND_PORT} \
-  --workers=2 \
-  --log-level=warning \
-  --umask 007
-Restart=on-failure
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-EOF
+  jq --arg a "127.0.0.1" '.database.host = $a' "${SETTINGS_JSON}" > "${SETTINGS_JSON}_tmp" && mv "${SETTINGS_JSON}_tmp" "${SETTINGS_JSON}"
+  jq --arg a "${PG_DB_USER}" '.database.user = $a' "${SETTINGS_JSON}" > "${SETTINGS_JSON}_tmp" && mv "${SETTINGS_JSON}_tmp" "${SETTINGS_JSON}"
+  jq --arg a "${PG_DB_PASS}" '.database.password = $a' "${SETTINGS_JSON}" > "${SETTINGS_JSON}_tmp" && mv "${SETTINGS_JSON}_tmp" "${SETTINGS_JSON}"
+  jq --arg a "${PG_DB_NAME}" '.database.name = $a' "${SETTINGS_JSON}" > "${SETTINGS_JSON}_tmp" && mv "${SETTINGS_JSON}_tmp" "${SETTINGS_JSON}"
+  jq --arg a "5432" '.database.port = $a' "${SETTINGS_JSON}" > "${SETTINGS_JSON}_tmp" && mv "${SETTINGS_JSON}_tmp" "${SETTINGS_JSON}"
+  jq --arg a "https://${FQDN}" '.ca.url = $a' "${SETTINGS_JSON}" > "${SETTINGS_JSON}_tmp" && mv "${SETTINGS_JSON}_tmp" "${SETTINGS_JSON}"
+  jq --arg a "${CAFingerPrint}" '.ca.fingerprint = $a' "${SETTINGS_JSON}" > "${SETTINGS_JSON}_tmp" && mv "${SETTINGS_JSON}_tmp" "${SETTINGS_JSON}"
+  jq --arg a "${CAAdmin}" '.ca.admin_provisioner_name = $a' "${SETTINGS_JSON}" > "${SETTINGS_JSON}_tmp" && mv "${SETTINGS_JSON}_tmp" "${SETTINGS_JSON}"
+  jq --arg a "${APP_PATH}" '.app.path = $a' "${SETTINGS_JSON}" > "${SETTINGS_JSON}_tmp" && mv "${SETTINGS_JSON}_tmp" "${SETTINGS_JSON}"
+  jq --arg a "http://${FQDN}:${BIND_PORT}" '.app.url = $a' "${SETTINGS_JSON}" > "${SETTINGS_JSON}_tmp" && mv "${SETTINGS_JSON}_tmp" "${SETTINGS_JSON}"
+  jq --arg a "${CONF_PATH}" '.app.conf = $a' "${SETTINGS_JSON}" > "${SETTINGS_JSON}_tmp" && mv "${SETTINGS_JSON}_tmp" "${SETTINGS_JSON}"
  
   step ca provisioner list \
     | jq -r '.[] | select(.name == "Admin JWK") | .encryptedKey' \
