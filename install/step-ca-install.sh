@@ -486,9 +486,9 @@ postgresql)
   cp etc/stepca-web/settings.json ${SETTINGS_JSON}
   cp etc/systemd/system/step-ca-web.service /etc/systemd/system/step-ca-web.service
 
-  sed -i "s/APP_PATH=/APP_PATH=${APP_PATH}/" ${SETTINGS_ENV}
-  sed -i "s/APP_CONF=/APP_CONF=${CONF_PATH}/" ${SETTINGS_ENV}
-  sed -i "s/APP_URL=/APP_URL=http://${FQDN}:${BIND_PORT}/" ${SETTINGS_ENV}  
+  sed -i "s|APP_PATH=|APP_PATH=${APP_PATH}|" ${SETTINGS_ENV}
+  sed -i "s|APP_CONF=|APP_CONF=${CONF_PATH}|" ${SETTINGS_ENV}
+  sed -i "s|APP_URL=|APP_URL=http://${FQDN}:${BIND_PORT}|" ${SETTINGS_ENV}  
 
   jq --arg a "127.0.0.1" '.database.host = $a' "${SETTINGS_JSON}" > "${SETTINGS_JSON}_tmp" && mv "${SETTINGS_JSON}_tmp" "${SETTINGS_JSON}"
   jq --arg a "${PG_DB_USER}" '.database.user = $a' "${SETTINGS_JSON}" > "${SETTINGS_JSON}_tmp" && mv "${SETTINGS_JSON}_tmp" "${SETTINGS_JSON}"
