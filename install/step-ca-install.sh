@@ -318,7 +318,7 @@ $STD systemctl start step-ca
 msg_ok "Started step-ca as a Daemon"
 
 msg_info "Creating CA Root and Intermediate Certificates and Keys"
-echo
+
 # Generate Root CA Certificate and Key
 # - Validity: 219168h (~25 Years)
 # - maxPathLen: 1 (Root -> Intermediate -> Leaf) => Only one Intermediate CA allowed below Root CA
@@ -376,7 +376,7 @@ sleep 5
 msg_ok "Created CA Root and Intermediate Certificates and Keys"
 
 msg_info "Configuring step-ca Admins and Provisioners"
-echo
+
 # Configure CA Super-Admin, Admins and Provisioners settings
 AdminDir="$(step path)/admins"
 AdminCert="$AdminDir/admin.crt"
@@ -481,7 +481,6 @@ postgresql)
   msg_ok "Installed step-ca Web Admin"
   
   msg_info "Creating step-ca Web Admin Service"
-  echo
 
   mkdir -p "$CONF_PATH"
   cp etc/stepca-web/settings.env ${SETTINGS_ENV}
@@ -512,13 +511,13 @@ postgresql)
   chmod 755 ${APP_PATH}/bin/*
   ln -s "$CONF_PATH/settings.json" "$APP_PATH/settings.json"
   ln -s "$CONF_PATH/jwk_key.json" "$APP_PATH/jwk_key.json"
-
-  # Change local default admin password
-  echo
-  ${APP_PATH}/bin/stepca-web-passwd.sh
   
   $STD systemctl enable -q --now step-ca-web.service
   msg_ok "Created step-ca Web Admin Service"
+
+  # Change local default admin password
+  ${APP_PATH}/bin/stepca-web-passwd.sh
+  $STD systemctl restart -q step-ca-web.service
   ;;
 esac
 
