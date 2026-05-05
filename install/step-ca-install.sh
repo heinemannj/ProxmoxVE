@@ -465,7 +465,6 @@ EOF
 postgresql)
   setup_uv
   msg_info "Installing step-ca Web Admin"
-  #apt install -y git python3-pip
   $STD apt install -y git nginx
 
   APP_PATH="/opt/stepca-web"
@@ -474,9 +473,9 @@ postgresql)
   SETTINGS_JSON="${CONF_PATH}/settings.json"
   BIND_PORT=5000
   
-  git clone https://github.com/heinemannj/stepca-web "$APP_PATH"
+  $STD git clone https://github.com/heinemannj/stepca-web "$APP_PATH"
   cd "$APP_PATH"
-  uv pip install --system -r "$APP_PATH/requirements.txt"
+  $STD uv pip install --system -r "$APP_PATH/requirements.txt"
   msg_ok "Installed step-ca Web Admin"
   
   msg_info "Creating step-ca Web Admin Service\n"
@@ -502,7 +501,7 @@ postgresql)
   jq --arg a "http://${FQDN}:${BIND_PORT}" '.app.url = $a' "${SETTINGS_JSON}" > "${SETTINGS_JSON}_tmp" && mv "${SETTINGS_JSON}_tmp" "${SETTINGS_JSON}"
   jq --arg a "${CONF_PATH}" '.app.conf = $a' "${SETTINGS_JSON}" > "${SETTINGS_JSON}_tmp" && mv "${SETTINGS_JSON}_tmp" "${SETTINGS_JSON}"
  
-  step ca provisioner list \
+  $STD step ca provisioner list \
     | jq -r '.[] | select(.name == "Admin JWK") | .encryptedKey' \
     | step crypto jwe decrypt --password-file="$ProvisionerPwdFile" \
     | jq > $CONF_PATH/jwk_key.json
