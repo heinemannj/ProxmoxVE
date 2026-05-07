@@ -43,7 +43,10 @@ echo "export STEPPATH=${STEPPATH}" >> /etc/profile
 export STEPHOME=$STEPHOME
 echo "export STEPHOME=${STEPHOME}" >> /etc/profile
 
-mkdir -p "$STEPHOME"
+mkdir -p "$STEPHOME/certs/ca"
+mkdir -p "$STEPHOME/certs/ssh"
+mkdir -p "$STEPHOME/certs/x509"
+mkdir -p "$STEPHOME/private"
 
 # Patch for making $STD happy (/usr/bin/step is a symlink to /usr/bin/step-cli)
 STEPBIN="$(which step)"
@@ -76,6 +79,7 @@ msg_info "Initializing step-ca"
 # Initialize step-ca
 DeploymentType="standalone"
 FQDN="$(hostname -f)"
+HOST="$(hostname)"
 IP="${LOCAL_IP}"
 LISTENER=":443"
 LISTENER_INSECURE=":9001"
@@ -474,22 +478,30 @@ postgresql)
   SETTINGS_ENV="${CONF_PATH}/settings.env"
   SETTINGS_JSON="${CONF_PATH}/settings.json"
   BIND_PORT=5000
-  
+  NGINX_CONF_PATH=/etc/nginx/sites-available/stepca-web
+  NGINX_BIND_PORT=5443
+
   $STD git clone https://github.com/heinemannj/stepca-web "$APP_PATH"
   cd "$APP_PATH"
   $STD uv pip install --system -r "$APP_PATH/requirements.txt"
-  msg_ok "Installed step-ca Web Admin"
-  
-  msg_info "Creating step-ca Web Admin Service"
 
   mkdir -p "$CONF_PATH"
+  mkdir -p /var/www/step-ca-api
   cp etc/stepca-web/settings.env ${SETTINGS_ENV}
   cp etc/stepca-web/settings.json ${SETTINGS_JSON}
-  cp etc/systemd/system/step-ca-web.service /etc/systemd/system/step-ca-web.service
+  cp etc/systemd/system/* /etc/systemd/system/
+
+  cp etc/nginx/sites-available/stepca-web ${NGINX_CONF_PATH}
+  ln -s ${NGINX_CONF_PATH} /etc/nginx/sites-enabled/stepca-web
+  rm /etc/nginx/sites-enabled/default
+
+  sed -i "s|    server_name|    server_name ${FQDN};|" ${NGINX_CONF_PATH}
+  sed -i "s|    ssl_certificate|    ssl_certificate /etc/step/certs/x509/${FQDN}.crt;|" ${NGINX_CONF_PATH}
+  sed -i "s|    ssl_certificate_key|    ssl_certificate_key /etc/step/private/${FQDN}.key;|" ${NGINX_CONF_PATH}
 
   sed -i "s|APP_PATH=|APP_PATH=${APP_PATH}|" ${SETTINGS_ENV}
   sed -i "s|APP_CONF=|APP_CONF=${CONF_PATH}|" ${SETTINGS_ENV}
-  sed -i "s|APP_URL=|APP_URL=http://${FQDN}:${BIND_PORT}|" ${SETTINGS_ENV}  
+  sed -i "s|APP_URL=|APP_URL=http://${FQDN}:${NGINX_BIND_PORT}|" ${SETTINGS_ENV}  
 
   jq --arg a "127.0.0.1" '.database.host = $a' "${SETTINGS_JSON}" > "${SETTINGS_JSON}_tmp" && mv "${SETTINGS_JSON}_tmp" "${SETTINGS_JSON}"
   jq --arg a "${PG_DB_USER}" '.database.user = $a' "${SETTINGS_JSON}" > "${SETTINGS_JSON}_tmp" && mv "${SETTINGS_JSON}_tmp" "${SETTINGS_JSON}"
@@ -500,7 +512,7 @@ postgresql)
   jq --arg a "${CAFingerPrint}" '.ca.fingerprint = $a' "${SETTINGS_JSON}" > "${SETTINGS_JSON}_tmp" && mv "${SETTINGS_JSON}_tmp" "${SETTINGS_JSON}"
   jq --arg a "${CAAdmin}" '.ca.admin_provisioner_name = $a' "${SETTINGS_JSON}" > "${SETTINGS_JSON}_tmp" && mv "${SETTINGS_JSON}_tmp" "${SETTINGS_JSON}"
   jq --arg a "${APP_PATH}" '.app.path = $a' "${SETTINGS_JSON}" > "${SETTINGS_JSON}_tmp" && mv "${SETTINGS_JSON}_tmp" "${SETTINGS_JSON}"
-  jq --arg a "http://${FQDN}:${BIND_PORT}" '.app.url = $a' "${SETTINGS_JSON}" > "${SETTINGS_JSON}_tmp" && mv "${SETTINGS_JSON}_tmp" "${SETTINGS_JSON}"
+  jq --arg a "http://${FQDN}:${NGINX_BIND_PORT}" '.app.url = $a' "${SETTINGS_JSON}" > "${SETTINGS_JSON}_tmp" && mv "${SETTINGS_JSON}_tmp" "${SETTINGS_JSON}"
   jq --arg a "${CONF_PATH}" '.app.conf = $a' "${SETTINGS_JSON}" > "${SETTINGS_JSON}_tmp" && mv "${SETTINGS_JSON}_tmp" "${SETTINGS_JSON}"
  
   step ca provisioner list \
@@ -511,8 +523,36 @@ postgresql)
   chmod 755 ${APP_PATH}/bin/*
   ln -s "$CONF_PATH/settings.json" "$APP_PATH/settings.json"
   ln -s "$CONF_PATH/jwk_key.json" "$APP_PATH/jwk_key.json"
-  
+  msg_ok "Installed step-ca Web Admin"
+
+  msg_info "Requesting x509 Certificate for CN '$FQDN' by '$AcmeProvisioner'"
+  local FLAGS=(--force
+    --not-after="$X509DefaultDur"
+    --provisioner="$AcmeProvisioner"
+    --set country="$PKICountry"
+    --set organization="$PKIName"
+    --set organizationalUnit="$PKIOrganizationalUnit"
+    --set issuingCertificateURL="https://${FQDN}${LISTENER}/roots.pem"
+    --set crlDistributionPoints="https://${FQDN}${LISTENER}/crl")
+  local SAN_ITEMS=("$FQDN" "$HOST" "$IP")
+  for item in "${SAN_ITEMS[@]}"; do
+    [ ! -z "$item" ] && FLAGS+=(--san "$item")
+  done
+
+  $STD step ca certificate "$FQDN" \
+    "${STEPHOME}/certs/x509/"$FQDN".crt \
+    "${STEPHOME}/private/"$FQDN".key \
+    "${FLAGS[@]}"
+  msg_ok "Requested x509 Certificate for CN '$FQDN' by '$AcmeProvisioner'"
+
+  msg_info "Installing Daemon for Renewal of x509 Certificate for CN '$FQDN'"
+  $STD systemctl enable --now step-cli-cert-renewer@"${FQDN}".timer
+  $STD systemctl list-units step-cli-cert-renewer@\*.timer
+  msg_ok "Installed Daemon for Renewal of x509 Certificate for CN '$FQDN'"
+
+  msg_info "Creating step-ca Web Admin Service"
   $STD systemctl enable -q --now step-ca-web.service
+  $STD systemctl reload nginx.service
   msg_ok "Created step-ca Web Admin Service"
 
   # Change local default admin password
