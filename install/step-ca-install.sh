@@ -494,6 +494,7 @@ postgresql)
   cp etc/nginx/sites-available/stepca-web ${NGINX_CONF_PATH}
   ln -s ${NGINX_CONF_PATH} /etc/nginx/sites-enabled/stepca-web
   rm /etc/nginx/sites-enabled/default
+  $STD systemctl stop nginx.service
 
   sed -i "s|    server_name|    server_name ${FQDN};|" ${NGINX_CONF_PATH}
   sed -i "s|    ssl_certificate|    ssl_certificate /etc/step/certs/x509/${FQDN}.crt;|" ${NGINX_CONF_PATH}
@@ -552,7 +553,7 @@ postgresql)
 
   msg_info "Creating step-ca Web Admin Service"
   $STD systemctl enable -q --now step-ca-web.service
-  $STD systemctl reload nginx.service
+  $STD systemctl start nginx.service
   msg_ok "Created step-ca Web Admin Service"
 
   # Change local default admin password
