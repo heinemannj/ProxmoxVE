@@ -496,9 +496,9 @@ postgresql)
   rm /etc/nginx/sites-enabled/default
   $STD systemctl stop nginx.service
 
-  sed -i "s|    server_name|    server_name ${FQDN};|" ${NGINX_CONF_PATH}
-  sed -i "s|    ssl_certificate|    ssl_certificate /etc/step/certs/x509/${FQDN}.crt;|" ${NGINX_CONF_PATH}
-  sed -i "s|    ssl_certificate_key|    ssl_certificate_key /etc/step/private/${FQDN}.key;|" ${NGINX_CONF_PATH}
+  sed -i "s|server_name .*|server_name ${FQDN};|" ${NGINX_CONF_PATH}
+  sed -i "s|ssl_certificate .*|ssl_certificate /etc/step/certs/x509/${FQDN}.crt;|" ${NGINX_CONF_PATH}
+  sed -i "s|ssl_certificate_key .*|ssl_certificate_key /etc/step/private/${FQDN}.key;|" ${NGINX_CONF_PATH}
 
   sed -i "s|APP_PATH=|APP_PATH=${APP_PATH}|" ${SETTINGS_ENV}
   sed -i "s|APP_CONF=|APP_CONF=${CONF_PATH}|" ${SETTINGS_ENV}
