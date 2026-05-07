@@ -540,8 +540,8 @@ postgresql)
   done
 
   $STD step ca certificate "$FQDN" \
-    "${STEPHOME}/certs/x509/"$FQDN".crt \
-    "${STEPHOME}/private/"$FQDN".key \
+    "${STEPHOME}/certs/x509/${FQDN}.crt" \
+    "${STEPHOME}/private/${FQDN}.key" \
     "${FLAGS[@]}"
   msg_ok "Requested x509 Certificate for CN '$FQDN' by '$AcmeProvisioner'"
 
