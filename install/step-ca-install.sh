@@ -526,7 +526,7 @@ postgresql)
   msg_ok "Installed step-ca Web Admin"
 
   msg_info "Requesting x509 Certificate for CN '$FQDN' by '$AcmeProvisioner'"
-  local FLAGS=(--force
+  FLAGS=(--force
     --not-after="$X509DefaultDur"
     --provisioner="$AcmeProvisioner"
     --set country="$PKICountry"
@@ -534,7 +534,7 @@ postgresql)
     --set organizationalUnit="$PKIOrganizationalUnit"
     --set issuingCertificateURL="https://${FQDN}${LISTENER}/roots.pem"
     --set crlDistributionPoints="https://${FQDN}${LISTENER}/crl")
-  local SAN_ITEMS=("$FQDN" "$HOST" "$IP")
+  SAN_ITEMS=("$FQDN" "$HOST" "$IP")
   for item in "${SAN_ITEMS[@]}"; do
     [ ! -z "$item" ] && FLAGS+=(--san "$item")
   done
