@@ -500,9 +500,9 @@ postgresql)
   sed -i "s|ssl_certificate .*|ssl_certificate /etc/step/certs/x509/${FQDN}.crt;|" ${NGINX_CONF_PATH}
   sed -i "s|ssl_certificate_key .*|ssl_certificate_key /etc/step/private/${FQDN}.key;|" ${NGINX_CONF_PATH}
 
-  sed -i "s|APP_PATH=|APP_PATH=${APP_PATH}|" ${SETTINGS_ENV}
-  sed -i "s|APP_CONF=|APP_CONF=${CONF_PATH}|" ${SETTINGS_ENV}
-  sed -i "s|APP_URL=|APP_URL=http://${FQDN}:${NGINX_BIND_PORT}|" ${SETTINGS_ENV}  
+  sed -i "s|APP_PATH=.*|APP_PATH=${APP_PATH}|" ${SETTINGS_ENV}
+  sed -i "s|APP_CONF=.*|APP_CONF=${CONF_PATH}|" ${SETTINGS_ENV}
+  sed -i "s|APP_URL=.*|APP_URL=http://${FQDN}:${NGINX_BIND_PORT}|" ${SETTINGS_ENV}  
 
   jq --arg a "127.0.0.1" '.database.host = $a' "${SETTINGS_JSON}" > "${SETTINGS_JSON}_tmp" && mv "${SETTINGS_JSON}_tmp" "${SETTINGS_JSON}"
   jq --arg a "${PG_DB_USER}" '.database.user = $a' "${SETTINGS_JSON}" > "${SETTINGS_JSON}_tmp" && mv "${SETTINGS_JSON}_tmp" "${SETTINGS_JSON}"
@@ -513,7 +513,7 @@ postgresql)
   jq --arg a "${CAFingerPrint}" '.ca.fingerprint = $a' "${SETTINGS_JSON}" > "${SETTINGS_JSON}_tmp" && mv "${SETTINGS_JSON}_tmp" "${SETTINGS_JSON}"
   jq --arg a "${CAAdmin}" '.ca.admin_provisioner_name = $a' "${SETTINGS_JSON}" > "${SETTINGS_JSON}_tmp" && mv "${SETTINGS_JSON}_tmp" "${SETTINGS_JSON}"
   jq --arg a "${APP_PATH}" '.app.path = $a' "${SETTINGS_JSON}" > "${SETTINGS_JSON}_tmp" && mv "${SETTINGS_JSON}_tmp" "${SETTINGS_JSON}"
-  jq --arg a "http://${FQDN}:${NGINX_BIND_PORT}" '.app.url = $a' "${SETTINGS_JSON}" > "${SETTINGS_JSON}_tmp" && mv "${SETTINGS_JSON}_tmp" "${SETTINGS_JSON}"
+  jq --arg a "https://${FQDN}:${NGINX_BIND_PORT}" '.app.url = $a' "${SETTINGS_JSON}" > "${SETTINGS_JSON}_tmp" && mv "${SETTINGS_JSON}_tmp" "${SETTINGS_JSON}"
   jq --arg a "${CONF_PATH}" '.app.conf = $a' "${SETTINGS_JSON}" > "${SETTINGS_JSON}_tmp" && mv "${SETTINGS_JSON}_tmp" "${SETTINGS_JSON}"
  
   step ca provisioner list \
