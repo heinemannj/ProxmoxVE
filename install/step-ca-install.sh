@@ -553,7 +553,7 @@ postgresql)
 
   msg_info "Creating step-ca Web Admin Service"
   $STD systemctl enable -q --now step-ca-web.service
-  $STD systemctl start nginx.service
+  #$STD systemctl start nginx.service
   msg_ok "Created step-ca Web Admin Service"
 
   # Change local default admin password
